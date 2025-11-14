@@ -1,0 +1,3 @@
+[console_scripts]
+robohive_clean = robohive_init:clean_simhive
+robohive_init = robohive_init:fetch_simhive

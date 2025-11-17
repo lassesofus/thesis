@@ -19,7 +19,7 @@
 
     <worldbody>
 
-        <camera name='left_cam' pos='-0.891 0.147 1.121' xyaxes='0.231 -0.973 -0.000 0.050 0.012 0.999'/>
+        <camera name='left_cam' pos='-0.691 0.147 1.121' xyaxes='0.231 -0.973 -0.000 0.050 0.012 0.999'/>
         <camera name='right_cam' pos='1.2 -0.5 1.8' quat='0.76 0.5 0.21 0.35'/>
         <camera name='top_cam' pos='0 0.5 2.2' euler='0 0 0'/>
 

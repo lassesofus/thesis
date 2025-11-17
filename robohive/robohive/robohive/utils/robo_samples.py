@@ -54,6 +54,7 @@ import numpy as np
 import torch
 from torch.nn import functional as F
 from PIL import Image
+import pdb
 
 try:
     import skvideo.io
@@ -115,17 +116,34 @@ def capture_rgb_and_append(frames_list, sim, render, steps_per_frame,
 
 def execute_waypoints_and_record(waypoints, frames_list, horizon, step_dt,
                                  sim, render, steps_per_frame, frame_counter,
-                                 width, height, camera_name, device_id):
+                                 width, height, camera_name, device_id,
+                                 track_distances=False, target_pos=None,
+                                 ee_sid=None, distance_samples=20):
     t = 0.0
     idx = 0
     num_waypoints = len(waypoints)
+    distances = []  # optionally filled if track_distances is True
 
+    # precompute stride for distance sampling
+    stride = 1
+    if track_distances and distance_samples > 0 and num_waypoints > 0:
+        stride = max(1, num_waypoints // distance_samples)
+
+    wp_idx = 0
     while t <= horizon:
         # clamp index to last waypoint
         idx = min(idx, num_waypoints - 1)
 
         # directly set actuator target like the tutorial does
         sim.data.ctrl[:ARM_nJnt] = waypoints[idx]['position']
+
+        # optionally measure distance for a subset of waypoints
+        if track_distances and target_pos is not None and ee_sid is not None:
+            if (wp_idx % stride) == 0:
+                sim.forward()  # ensure site_xpos is updated before measuring
+                ee_pos = sim.data.site_xpos[ee_sid].copy()
+                dist = np.linalg.norm(ee_pos - target_pos)
+                distances.append(dist)
 
         # capture frame before advancing
         capture_rgb_and_append(
@@ -137,12 +155,18 @@ def execute_waypoints_and_record(waypoints, frames_list, horizon, step_dt,
         sim.advance(render=(render == 'onscreen'))
         t += step_dt
         idx += 1
+        wp_idx += 1
 
     # hold final waypoint briefly with the planned position (not actual qpos)
     final_ctrl = waypoints[-1]['position'].copy()
     hold_steps = max(5, int(0.2 / sim.model.opt.timestep))
     for _ in range(hold_steps):
         sim.data.ctrl[:ARM_nJnt] = final_ctrl
+        if track_distances and target_pos is not None and ee_sid is not None:
+            sim.forward()
+            ee_pos = sim.data.site_xpos[ee_sid].copy()
+            dist = np.linalg.norm(ee_pos - target_pos)
+            distances.append(dist)
         capture_rgb_and_append(
             frames_list, sim, render, steps_per_frame, frame_counter,
             width, height, camera_name, device_id
@@ -150,6 +174,8 @@ def execute_waypoints_and_record(waypoints, frames_list, horizon, step_dt,
         sim.advance(render=(render == 'onscreen'))
 
     # Return the final planned position for smooth chaining
+    if track_distances:
+        return final_ctrl, distances
     return final_ctrl
 
 
@@ -177,30 +203,12 @@ def sample_point_in_sphere(center, R):
     ])
     return center + r * dir_vec
 
-
-def _free_cuda_cache():
-    import gc, torch
-    for name in [
-        'z_hat', 's_hat', 'a_hat', 'loss',
-        'plot_data', 'delta_x', 'delta_z', 'energy',
-        'heatmap', 'xedges', 'yedges'
-    ]:
-        if name in globals():
-            try:
-                del globals()[name]
-            except:
-                pass
-    gc.collect()
-    if torch.cuda.is_available():
-        torch.cuda.empty_cache()
-
-
 @click.command(help=DESC)
 @click.option(
     '-s', '--sim_path',
     type=str,
     required=True,
-    default='/home/s185927/src/robohive/robohive/envs/arms/franka/assets/franka_reach_v0.xml',
+    default='/home/s185927/thesis/robohive/robohive/robohive/envs/arms/franka/assets/franka_reach_v0.xml',
     help='environment XML to load'
 )
 @click.option('-h', '--horizon', type=float, default=3.0, help='time (s) to simulate per phase')
@@ -310,11 +318,16 @@ def main(sim_path, horizon, radius, render, camera_name, out_dir, out_name,
 
     # Storage for all distance data across episodes
     all_episode_data = {
-        'phase1_ik_distances': [],   # Distance trajectory for IK-based approach
-        'phase3_vjepa_distances': [],  # Distance trajectory for V-JEPA planning
-        'phase1_final_distance': [],  # Final distance achieved by IK
-        'phase3_final_distance': [],  # Final distance achieved by V-JEPA
-        'target_positions': [],       # Target positions for each episode
+        'phase1_ik_distances': [],
+        'phase1_final_distance': [],
+        'phase3_vjepa_distances': [],
+        'phase3_repr_l1_distances': [],
+        'phase3_final_distance': [],
+        'phase3_actions_raw': [],
+        'phase3_actions_transformed': [],
+        'target_positions': [],
+        'initial_ee_positions': [],
+        'ik_success': [],
         'episode_ids': []
     }
 
@@ -424,6 +437,7 @@ def main(sim_path, horizon, radius, render, camera_name, out_dir, out_name,
 
         # Track distances during Phase 1 (IK approach)
         phase1_distances = []
+        phase1_distances_all_targets = []  # Track across all targets (NEW)
 
         # Phase 1: Reactively visit N consecutive targets
         while targets_reached < num_targets:
@@ -485,8 +499,9 @@ def main(sim_path, horizon, radius, render, camera_name, out_dir, out_name,
                 f"({len(approach_waypoints) * step_dt:.2f}s)"
             )
 
-            # Execute trajectory to reach this target
-            current_joint_pos = execute_waypoints_and_record(
+            # Execute trajectory to reach this target with distance tracking (NEW)
+            target_distances_this_approach = []  # Track distance per step
+            current_joint_pos, target_distances_this_approach = execute_waypoints_and_record(
                 approach_waypoints,
                 frames,
                 horizon,
@@ -498,8 +513,14 @@ def main(sim_path, horizon, radius, render, camera_name, out_dir, out_name,
                 width,
                 height,
                 camera_name,
-                device_id
+                device_id,
+                track_distances=True,
+                target_pos=target_pos,
+                ee_sid=ee_sid,
+                distance_samples=20,
             )
+
+            phase1_distances_all_targets.append(target_distances_this_approach)
 
             targets_reached += 1
             print(f" Reached target {targets_reached}/{num_targets}")
@@ -553,6 +574,7 @@ def main(sim_path, horizon, radius, render, camera_name, out_dir, out_name,
             f"({len(return_waypoints) * step_dt:.2f}s)"
         )
 
+        # for Phase 2 we don't need distances, so use default signature
         final_return_pos = execute_waypoints_and_record(
             return_waypoints,
             frames,
@@ -597,6 +619,9 @@ def main(sim_path, horizon, radius, render, camera_name, out_dir, out_name,
 
         # Phase 3: VJEPA-based CEM planning with distance tracking
         phase3_distances = []
+        phase3_repr_l1_distances = []
+        phase3_actions_raw = []  # Store raw actions (NEW)
+        phase3_actions_transformed = []  # Store transformed actions (NEW)
 
         if (
             enable_vjepa_planning and
@@ -800,6 +825,11 @@ def main(sim_path, horizon, radius, render, camera_name, out_dir, out_name,
                     z_goal = h[:, -tokens_per_frame:].contiguous().clone()
                     del h
 
+                    # Calculate L1 distance between current and goal representations
+                    repr_l1_distance = torch.mean(torch.abs(z_n - z_goal)).item()
+                    phase3_repr_l1_distances.append(repr_l1_distance)
+                    print(f" Representation L1 distance: {repr_l1_distance:.6f}")
+
                     # Build state tensor
                     pos = current_ee_pos
                     rpy = np.zeros(3, dtype=float)
@@ -821,6 +851,9 @@ def main(sim_path, horizon, radius, render, camera_name, out_dir, out_name,
                         f"({actions[0, 0]:.3f}, {actions[0, 1]:.3f}, {actions[0, 2]:.3f})"
                     )
 
+                    # Store raw action (NEW)
+                    phase3_actions_raw.append(actions[0].copy())
+
                     # Transform action from camera frame to robot frame
                     transformed_action = transform_action(actions[0], action_transform)
                     print(
@@ -829,6 +862,9 @@ def main(sim_path, horizon, radius, render, camera_name, out_dir, out_name,
                         f"{transformed_action[1]:.3f}, "
                         f"{transformed_action[2]:.3f})"
                     )
+
+                    # Store transformed action (NEW)
+                    phase3_actions_transformed.append(transformed_action.copy())
 
                     # Convert transformed action to joint-space waypoints
                     planned_delta = transformed_action[:7]  # dx,dy,dz,dp,dy,dr,grip
@@ -883,6 +919,26 @@ def main(sim_path, horizon, radius, render, camera_name, out_dir, out_name,
                 final_ee_pos = sim.data.site_xpos[ee_sid].copy()
                 final_distance = np.linalg.norm(final_ee_pos - final_target_pos)
                 phase3_distances.append(final_distance)
+                
+                # Calculate final representation distance
+                with torch.no_grad():
+                    final_rgb_for_repr = sim.renderer.render_offscreen(
+                        width=width, height=height, camera_id=camera_name, device_id=device_id
+                    )
+                    if final_rgb_for_repr is not None:
+                        combined_rgb_final = np.stack([final_rgb_for_repr, goal_rgb], axis=0)
+                        clips_final = transform(combined_rgb_final).unsqueeze(0).to(device)
+                        h_final = forward_target_local(clips_final)
+                        z_n_final = h_final[:, :tokens_per_frame].contiguous().clone()
+                        z_goal_final = h_final[:, -tokens_per_frame:].contiguous().clone()
+                        final_repr_l1_distance = torch.mean(torch.abs(z_n_final - z_goal_final)).item()
+                        phase3_repr_l1_distances.append(final_repr_l1_distance)
+                        del h_final, z_n_final, z_goal_final
+
+                if phase3_repr_l1_distances:
+                    final_repr_distance = phase3_repr_l1_distances[-1]
+                    print(f"\nFinal representation L1 distance: {final_repr_distance:.6f}")
+                
                 print(f"\nFinal distance to target: {final_distance:.4f}m")
 
                 # Save final state image if requested
@@ -911,10 +967,13 @@ def main(sim_path, horizon, radius, render, camera_name, out_dir, out_name,
         # Store data for this episode
         if save_distance_data:
             all_episode_data['phase1_ik_distances'].append(
-                phase1_distances if phase1_distances else [np.nan]
+                phase1_distances_all_targets if phase1_distances_all_targets else [[np.nan]]
             )
             all_episode_data['phase3_vjepa_distances'].append(
                 phase3_distances if phase3_distances else [np.nan]
+            )
+            all_episode_data['phase3_repr_l1_distances'].append(
+                phase3_repr_l1_distances if phase3_repr_l1_distances else [np.nan]
             )
             all_episode_data['phase1_final_distance'].append(
                 phase1_distances[-1] if phase1_distances else np.nan
@@ -922,28 +981,26 @@ def main(sim_path, horizon, radius, render, camera_name, out_dir, out_name,
             all_episode_data['phase3_final_distance'].append(
                 phase3_distances[-1] if phase3_distances else np.nan
             )
+            all_episode_data['phase3_actions_raw'].append(
+                phase3_actions_raw if phase3_actions_raw else []
+            )
+            all_episode_data['phase3_actions_transformed'].append(
+                phase3_actions_transformed if phase3_actions_transformed else []
+            )
             all_episode_data['target_positions'].append(
                 final_target_pos.tolist() if final_target_pos is not None else [np.nan, np.nan, np.nan]
             )
+            all_episode_data['initial_ee_positions'].append(
+                EE_START.tolist()
+            )
             all_episode_data['episode_ids'].append(episode)
 
-        # Save a single MP4 containing all captured frames
-        if render == 'offscreen':
+        # Save video if offscreen rendering
+        if render == 'offscreen' and frames:
+            save_frames = np.array(frames, dtype=np.uint8)
             if skvideo is None:
-                print("skvideo not available: saving individual PNGs instead.")
-                for i, f in enumerate(frames):
-                    try:
-                        Image.fromarray(f).save(
-                            os.path.join(
-                                experiment_out_dir,
-                                f"{out_name}{experiment_type}_{episode}_{i:04d}.png"
-                            )
-                        )
-                    except Exception:
-                        pass
+                print("Warning: skvideo not available, skipping video save")
             else:
-                # No resizing needed - frames are already correct size
-                save_frames = np.asarray(frames, dtype=np.uint8)
                 file_name = os.path.join(
                     experiment_out_dir,
                     out_name + experiment_type + "_" + str(episode) + ".mp4"
@@ -965,13 +1022,28 @@ def main(sim_path, horizon, radius, render, camera_name, out_dir, out_name,
     # Save all distance data after all episodes
     if save_distance_data:
         import json
+
+        def to_jsonable(obj):
+            """Recursively convert numpy types in obj to Python scalars/lists for JSON."""
+            import numpy as _np
+            if isinstance(obj, _np.ndarray):
+                return obj.tolist()
+            if isinstance(obj, (_np.generic,)):
+                return obj.item()
+            if isinstance(obj, dict):
+                return {k: to_jsonable(v) for k, v in obj.items()}
+            if isinstance(obj, (list, tuple)):
+                return [to_jsonable(v) for v in obj]
+            return obj
+
         # Save as JSON for easy loading
         summary_path = os.path.join(
             experiment_out_dir,
             f"{out_name}{experiment_type}_distance_summary.json"
         )
+        json_safe_data = to_jsonable(all_episode_data)
         with open(summary_path, 'w') as f:
-            json.dump(all_episode_data, f, indent=2)
+            json.dump(json_safe_data, f, indent=2)
         print(f"\nSaved distance summary: {summary_path}")
 
         # Also save as numpy for easy plotting (use consistent singular keys)
@@ -984,6 +1056,10 @@ def main(sim_path, horizon, radius, render, camera_name, out_dir, out_name,
             phase1_final_distance=np.array(all_episode_data['phase1_final_distance']),
             phase3_distances_per_episode=np.array(
                 [np.array(d) for d in all_episode_data['phase3_vjepa_distances']],
+                dtype=object
+            ),
+            phase3_repr_l1_distances_per_episode=np.array(
+                [np.array(d) for d in all_episode_data['phase3_repr_l1_distances']],
                 dtype=object
             ),
             phase3_final_distance=np.array(all_episode_data['phase3_final_distance']),

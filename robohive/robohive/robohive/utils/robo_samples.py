@@ -72,6 +72,21 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 print("Using device:", device)
 
 
+def robohive_to_droid_pos(pos_robohive):
+    """
+    Convert RoboHive position to DROID frame for display.
+
+    Transformation: DROID_x = RoboHive_y, DROID_y = RoboHive_x, DROID_z = RoboHive_z
+
+    Args:
+        pos_robohive: Position [x, y, z] in RoboHive frame
+
+    Returns:
+        Position [x, y, z] in DROID frame
+    """
+    return np.array([pos_robohive[1], pos_robohive[0], pos_robohive[2]])
+
+
 def compute_new_pose(current_pos, delta_pos, delta_rpy):
     """
     Compute new end-effector pose given current position and deltas.
@@ -259,12 +274,14 @@ def sample_point_in_sphere(center, R):
               help='Save RGB images used during V-JEPA planning for inspection')
 @click.option('--visualize_planning', is_flag=True, default=False,
               help='Create side-by-side visualization of current/goal images during planning')
-              
+@click.option('--vjepa_checkpoint', type=str, default=None,
+              help='Path to trained V-JEPA checkpoint (.pt file). If not specified, loads Meta baseline from Hub.')
+
 def main(sim_path, horizon, radius, render, camera_name, out_dir, out_name,
          width, height, device_id, fps, max_episodes, fixed_target,
          fixed_target_offset, experiment_type, num_targets, planning_steps,
          enable_vjepa_planning, save_distance_data, action_transform,
-         save_planning_images, visualize_planning):
+         save_planning_images, visualize_planning, vjepa_checkpoint):
 
     sim = SimScene.get_sim(model_handle=sim_path)
     target_sid = sim.model.site_name2id("target")
@@ -287,21 +304,35 @@ def main(sim_path, horizon, radius, render, camera_name, out_dir, out_name,
     sim.data.ctrl[:ARM_nJnt] = sim.data.qpos[:ARM_nJnt].copy()
     sim.forward()
     EE_START = sim.data.site_xpos[ee_sid].copy()
-    print(f"End effector starting position: {EE_START}")  # Debug print
+    EE_START_DROID = robohive_to_droid_pos(EE_START)
+    print(f"End effector starting position (RoboHive): {EE_START}")
+    print(f"End effector starting position (DROID): {EE_START_DROID}")
 
     os.makedirs(out_dir, exist_ok=True)
     episode = 0
 
     # Set up experiment-specific offset
+    # NOTE: Offsets are specified to match DROID coordinate frame conventions:
+    #   DROID_x = RoboHive_y, DROID_y = RoboHive_x, DROID_z = RoboHive_z
+    # So to move along DROID x-axis, we move along RoboHive y-axis, etc.
     if experiment_type == 'x':
-        experiment_offset = np.array([0.2, 0.0, 0.0])
-        print(f"Experiment type: X-axis (offset: {experiment_offset})")
-    elif experiment_type == 'y':
+        # DROID X-axis = RoboHive Y-axis
         experiment_offset = np.array([0.0, 0.2, 0.0])
-        print(f"Experiment type: Y-axis (offset: {experiment_offset})")
+        print(f"Experiment type: X-axis (DROID frame)")
+        print(f"  RoboHive offset: {experiment_offset}")
+        print(f"  DROID offset: {robohive_to_droid_pos(experiment_offset)}")
+    elif experiment_type == 'y':
+        # DROID Y-axis = RoboHive X-axis
+        experiment_offset = np.array([0.2, 0.0, 0.0])
+        print(f"Experiment type: Y-axis (DROID frame)")
+        print(f"  RoboHive offset: {experiment_offset}")
+        print(f"  DROID offset: {robohive_to_droid_pos(experiment_offset)}")
     else:  # 'z'
+        # DROID Z-axis = RoboHive Z-axis (no change)
         experiment_offset = np.array([0.0, 0.0, 0.2])
-        print(f"Experiment type: Z-axis (offset: {experiment_offset})")
+        print(f"Experiment type: Z-axis (DROID frame)")
+        print(f"  RoboHive offset: {experiment_offset}")
+        print(f"  DROID offset: {robohive_to_droid_pos(experiment_offset)}")
 
     # Create experiment-specific output directory
     experiment_out_dir = os.path.join(out_dir, f"reach_along_{experiment_type}")
@@ -333,10 +364,42 @@ def main(sim_path, horizon, radius, render, camera_name, out_dir, out_name,
 
     # Load V-JEPA models if planning is enabled
     if enable_vjepa_planning:
-        print("Loading V-JEPA models for CEM planning...")
-        encoder, predictor = torch.hub.load(
-            "facebookresearch/vjepa2", "vjepa2_ac_vit_giant"
-        )
+        if vjepa_checkpoint:
+            print(f"Loading V-JEPA models from checkpoint: {vjepa_checkpoint}")
+            # First load architecture from Hub
+            encoder, predictor = torch.hub.load(
+                "facebookresearch/vjepa2", "vjepa2_ac_vit_giant"
+            )
+            # Load checkpoint to CPU first to save GPU memory
+            checkpoint = torch.load(vjepa_checkpoint, map_location='cpu')
+
+            # Load encoder weights (try both possible keys)
+            if 'encoder' in checkpoint:
+                encoder.load_state_dict(checkpoint['encoder'])
+                print("  Loaded encoder weights")
+            elif 'target_encoder' in checkpoint:
+                encoder.load_state_dict(checkpoint['target_encoder'])
+                print("  Loaded target_encoder weights")
+            else:
+                raise ValueError(f"Cannot find encoder weights in checkpoint. Available keys: {list(checkpoint.keys())}")
+
+            # Load predictor weights
+            if 'predictor' in checkpoint:
+                predictor.load_state_dict(checkpoint['predictor'])
+                print("  Loaded predictor weights")
+            else:
+                raise ValueError(f"Cannot find predictor weights in checkpoint. Available keys: {list(checkpoint.keys())}")
+
+            # Free checkpoint memory
+            del checkpoint
+            torch.cuda.empty_cache()
+            print("  Cleared checkpoint from memory")
+        else:
+            print("Loading V-JEPA models from PyTorch Hub (Meta baseline)...")
+            encoder, predictor = torch.hub.load(
+                "facebookresearch/vjepa2", "vjepa2_ac_vit_giant"
+            )
+
         encoder = encoder.to(device).eval()
         predictor = predictor.to(device).eval()
 
@@ -380,18 +443,25 @@ def main(sim_path, horizon, radius, render, camera_name, out_dir, out_name,
 
     def transform_action(action, transform_type='none'):
         """
-        Transform actions from camera frame to robot frame.
+        Transform actions from DROID frame to RoboHive frame.
+
+        DROID → RoboHive transformation is needed because V-JEPA was trained on DROID data
+        and outputs actions in DROID coordinate frame, but RoboHive uses different axes:
+            DROID_x = RoboHive_y
+            DROID_y = RoboHive_x
+            DROID_z = RoboHive_z
 
         Args:
-            action: [dx, dy, dz, droll, dpitch, dyaw, gripper]
+            action: [dx, dy, dz, droll, dpitch, dyaw, gripper] in DROID frame
             transform_type: Type of transformation to apply
         Returns:
-            Transformed action in robot frame
+            Transformed action in RoboHive frame
         """
         transformed = action.copy()
 
-        if transform_type == 'swap_xy':
-            # Swap x and y axes
+        if transform_type == 'swap_xy': 
+            # Swap x and y axes: DROID → RoboHive
+            # RoboHive_x = DROID_y, RoboHive_y = DROID_x
             transformed[0], transformed[1] = action[1], action[0]
             transformed[3], transformed[4] = action[4], action[3]  # Also swap roll/pitch
         elif transform_type == 'negate_x':
@@ -400,7 +470,7 @@ def main(sim_path, horizon, radius, render, camera_name, out_dir, out_name,
         elif transform_type == 'negate_y':
             # Negate y axis
             transformed[1] = -action[1]
-        elif transform_type == 'swap_xy_negate_x':
+        elif transform_type == 'swap_xy_negate_x': # THIS IS THE RIGHT TRANSFORMATION FOR DROID <-> ROBOHIVE
             # Swap xy and negate new x
             transformed[0], transformed[1] = -action[1], action[0]
             transformed[3], transformed[4] = action[4], action[3]
@@ -461,13 +531,23 @@ def main(sim_path, horizon, radius, render, camera_name, out_dir, out_name,
                 final_target_pos = target_pos.copy()
 
             delta_pos = target_pos - EE_START
+            target_pos_droid = robohive_to_droid_pos(target_pos)
+            delta_pos_droid = robohive_to_droid_pos(delta_pos)
             print(
-                f" Target position (x,y,z) = "
+                f" Target position (RoboHive x,y,z) = "
                 f"({target_pos[0]:.3f},{target_pos[1]:.3f},{target_pos[2]:.3f})"
             )
             print(
-                f" Target delta (x,y,z) = "
+                f" Target position (DROID x,y,z) = "
+                f"({target_pos_droid[0]:.3f},{target_pos_droid[1]:.3f},{target_pos_droid[2]:.3f})"
+            )
+            print(
+                f" Target delta (RoboHive x,y,z) = "
                 f"({delta_pos[0]:.3f},{delta_pos[1]:.3f},{delta_pos[2]:.3f})"
+            )
+            print(
+                f" Target delta (DROID x,y,z) = "
+                f"({delta_pos_droid[0]:.3f},{delta_pos_droid[1]:.3f},{delta_pos_droid[2]:.3f})"
             )
 
             # Update visual target marker
@@ -663,6 +743,7 @@ def main(sim_path, horizon, radius, render, camera_name, out_dir, out_name,
                     # Get current EE pose
                     sim.forward()
                     current_ee_pos = sim.data.site_xpos[ee_sid].copy()
+                    current_ee_pos_droid = robohive_to_droid_pos(current_ee_pos)
 
                     # Calculate distance to target
                     distance = np.linalg.norm(current_ee_pos - final_target_pos)
@@ -670,6 +751,14 @@ def main(sim_path, horizon, radius, render, camera_name, out_dir, out_name,
                     print(
                         f"\nStep {step_idx + 1}/{planning_steps}: "
                         f"Distance to target = {distance:.4f}m"
+                    )
+                    print(
+                        f" Current EE (RoboHive): ({current_ee_pos[0]:.3f}, "
+                        f"{current_ee_pos[1]:.3f}, {current_ee_pos[2]:.3f})"
+                    )
+                    print(
+                        f" Current EE (DROID): ({current_ee_pos_droid[0]:.3f}, "
+                        f"{current_ee_pos_droid[1]:.3f}, {current_ee_pos_droid[2]:.3f})"
                     )
 
                     # Capture current observation RGB image
@@ -847,17 +936,17 @@ def main(sim_path, horizon, radius, render, camera_name, out_dir, out_name,
                     end_time = time.time()
                     print(f" Planning time: {end_time - start_time:.3f}s")
                     print(
-                        f" Raw planned action (x,y,z): "
+                        f" Raw planned action (DROID frame x,y,z): "
                         f"({actions[0, 0]:.3f}, {actions[0, 1]:.3f}, {actions[0, 2]:.3f})"
                     )
 
                     # Store raw action (NEW)
                     phase3_actions_raw.append(actions[0].copy())
 
-                    # Transform action from camera frame to robot frame
+                    # Transform action from DROID frame to RoboHive frame
                     transformed_action = transform_action(actions[0], action_transform)
                     print(
-                        f" Transformed action (x,y,z): "
+                        f" Transformed action (RoboHive frame x,y,z): "
                         f"({transformed_action[0]:.3f}, "
                         f"{transformed_action[1]:.3f}, "
                         f"{transformed_action[2]:.3f})"

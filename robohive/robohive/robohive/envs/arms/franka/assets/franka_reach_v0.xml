@@ -39,6 +39,9 @@
         <!-- tasks details added here via include-->
         <site name='target' type='sphere' size='.1' pos='0 0.475 1.0' group='1' rgba='0 0 0 0'/>  <!-- Change rgba to show target sphere -->
 
+        <!-- Coordinate axes visualization (X=Red, Y=Green, Z=Blue) -->
+        <!-- Place at front-left corner of workspace for visibility -->
+        
     </worldbody>
 
 </mujoco>

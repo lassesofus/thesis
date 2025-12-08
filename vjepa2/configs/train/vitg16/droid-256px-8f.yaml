@@ -1,6 +1,6 @@
 app: vjepa_droid
 cpus_per_task: 12
-folder: /your_folder/droid/4.8.vitg16-256px-8f
+folder: /data/s185927/vjepa2/weights/droid/4.8.vitg16-256px-8f
 mem_per_gpu: 220G
 nodes: 4
 tasks_per_node: 8
@@ -12,7 +12,7 @@ data:
   datasets:
     # CSV file, each line is a trajectory dir path
     # See https://github.com/facebookresearch/vjepa2/issues/65
-    - /your_file_path/droid_train_paths.csv
+    - /data/s185927/droid_sim/y_axis/train_trajectories.csv
   dataset_fpcs:
   - 8
   fps: 4
@@ -42,7 +42,7 @@ meta:
   eval_freq: 100
   resume_checkpoint: null
   load_predictor: false
-  pretrain_checkpoint: /your_vjepa2_checkpoints/vitg.pt
+  pretrain_checkpoint: /data/s185927/vjepa2/weights/vitg-384.pt
   context_encoder_key: target_encoder
   target_encoder_key: target_encoder
   save_every_freq: 25

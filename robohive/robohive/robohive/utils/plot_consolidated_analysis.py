@@ -30,7 +30,7 @@ PLOT_PARAMS = {
     "tick_length": 5,
     "y_tick_step": 0.05,
     "panel_label_size": 24,
-    "step_label_size": 18,
+    "step_label_size": 26,
 }
 
 # Planning steps to show (excluding step00 which is the start frame)
@@ -212,29 +212,33 @@ def main(out_dir, episode, threshold):
     # Create figure with GridSpec
     fig = plt.figure(figsize=PLOT_PARAMS["figsize"])
 
-    # 4 rows: Start/Goal images, Planning sequence, L2 plot, L1 plot
-    # Use height ratios to control row sizes, increase planning row slightly to reduce internal whitespace
-    outer_gs = gridspec.GridSpec(4, 3, figure=fig, height_ratios=[2.0, 0.7, 1.3, 1.3],
+    # Use a 3-row outer layout: images (rows 0-1 combined), L2 plot, L1 plot
+    # The first row will contain both Start/Goal and Planning sequence with tight spacing
+    outer_gs = gridspec.GridSpec(3, 3, figure=fig, height_ratios=[2.7, 1.3, 1.3],
                                   hspace=0.3, wspace=0.15, top=0.92, bottom=0.06)
 
     for col_idx, direction in enumerate(DIRECTIONS):
         data = all_data[direction]
 
-        # Create nested GridSpec for the image row (2 images side by side)
-        inner_gs = gridspec.GridSpecFromSubplotSpec(1, 2, subplot_spec=outer_gs[0, col_idx], wspace=0.05)
+        # Create nested GridSpec for image rows (Start/Goal + Planning) with tight spacing
+        image_gs = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=outer_gs[0, col_idx],
+                                                     height_ratios=[2.0, 0.7], hspace=0.15)
+
+        # Create nested GridSpec for the Start/Goal image row (2 images side by side)
+        inner_gs = gridspec.GridSpecFromSubplotSpec(1, 2, subplot_spec=image_gs[0], wspace=0.05)
 
         # Start image
         ax_start = fig.add_subplot(inner_gs[0, 0])
         if data['start_img'] is not None:
             ax_start.imshow(data['start_img'])
-        ax_start.set_title('Start Frame', fontsize=PLOT_PARAMS["subtitle_size"])
+        ax_start.set_title('$x_0$', fontsize=PLOT_PARAMS["step_label_size"])
         ax_start.axis('off')
 
         # Goal image
         ax_goal = fig.add_subplot(inner_gs[0, 1])
         if data['goal_img'] is not None:
             ax_goal.imshow(data['goal_img'])
-        ax_goal.set_title('Goal Frame', fontsize=PLOT_PARAMS["subtitle_size"])
+        ax_goal.set_title('$x_g$', fontsize=PLOT_PARAMS["step_label_size"])
         ax_goal.axis('off')
 
         # Add direction title with panel label above the image row
@@ -246,26 +250,19 @@ def main(out_dir, episode, threshold):
 
         # Planning sequence row (steps 1-5)
         n_steps = len(PLANNING_STEPS)
-        planning_gs = gridspec.GridSpecFromSubplotSpec(1, n_steps, subplot_spec=outer_gs[1, col_idx], wspace=0.02)
+        planning_gs = gridspec.GridSpecFromSubplotSpec(1, n_steps, subplot_spec=image_gs[1], wspace=0.02)
         for step_idx, step_num in enumerate(PLANNING_STEPS):
             ax_step = fig.add_subplot(planning_gs[0, step_idx])
             if data['planning_imgs'] and step_idx < len(data['planning_imgs']) and data['planning_imgs'][step_idx] is not None:
                 ax_step.imshow(data['planning_imgs'][step_idx])
-            ax_step.set_xlabel(f'{step_num}', fontsize=PLOT_PARAMS["step_label_size"])
+            ax_step.set_title(f'$x_{step_num}$', fontsize=PLOT_PARAMS["step_label_size"])
             ax_step.set_xticks([])
             ax_step.set_yticks([])
             for spine in ax_step.spines.values():
                 spine.set_visible(False)
 
-        # Add "Steps taken" row title for each column
-        planning_pos = outer_gs[1, col_idx].get_position(fig)
-        planning_x = (planning_pos.x0 + planning_pos.x1) / 2
-        planning_y = planning_pos.y1 + 0.01
-        fig.text(planning_x, planning_y, 'Steps taken (episode 1)', fontsize=PLOT_PARAMS["subtitle_size"],
-                 ha='center', va='bottom')
-
         # L2 Distance plot
-        ax_euclidean = fig.add_subplot(outer_gs[2, col_idx])
+        ax_euclidean = fig.add_subplot(outer_gs[1, col_idx])
         stat_steps = np.arange(data['dist_len'])
         ax_euclidean.errorbar(
             stat_steps,
@@ -286,9 +283,9 @@ def main(out_dir, episode, threshold):
             label=f'Threshold ({threshold}m)',
         )
         if col_idx == 0:
-            ax_euclidean.set_ylabel('Position Error (m)', fontsize=PLOT_PARAMS["label_size"])
+            ax_euclidean.set_ylabel('(m)', fontsize=PLOT_PARAMS["label_size"])
             ax_euclidean.legend(fontsize=PLOT_PARAMS["legend_size"], loc='best')
-        ax_euclidean.set_title('L2 Distance to Goal', fontsize=PLOT_PARAMS["title_size"])
+        ax_euclidean.set_title(r'$\Vert p_k - p_g \Vert_2$', fontsize=PLOT_PARAMS["title_size"])
         ax_euclidean.grid(True, alpha=PLOT_PARAMS["grid_alpha"])
         ax_euclidean.set_xticks(stat_steps)
 
@@ -301,7 +298,7 @@ def main(out_dir, episode, threshold):
         ax_euclidean.tick_params(axis='both', labelsize=PLOT_PARAMS["tick_label_size"], length=PLOT_PARAMS["tick_length"])
 
         # L1 Representation plot
-        ax_repr = fig.add_subplot(outer_gs[3, col_idx])
+        ax_repr = fig.add_subplot(outer_gs[2, col_idx])
         if data['repr_mean'] is not None:
             stat_repr_steps = np.arange(data['repr_len'])
             ax_repr.errorbar(
@@ -317,9 +314,9 @@ def main(out_dir, episode, threshold):
             )
             ax_repr.set_xlabel('Step', fontsize=PLOT_PARAMS["label_size"])
             if col_idx == 0:
-                ax_repr.set_ylabel('L1 Distance', fontsize=PLOT_PARAMS["label_size"])
+                #ax_repr.set_ylabel('L1 Distance', fontsize=PLOT_PARAMS["label_size"])
                 ax_repr.legend(fontsize=PLOT_PARAMS["legend_size"])
-            ax_repr.set_title('L1 Distance to Goal Repr.', fontsize=PLOT_PARAMS["title_size"])
+            ax_repr.set_title(r'$\Vert z_k - z_g \Vert_1$', fontsize=PLOT_PARAMS["title_size"])
             ax_repr.grid(True, alpha=PLOT_PARAMS["grid_alpha"])
             ax_repr.set_xticks(stat_repr_steps)
 
@@ -330,7 +327,7 @@ def main(out_dir, episode, threshold):
             ax_repr.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f'{x:.2f}'))
         else:
             ax_repr.text(0.5, 0.5, 'No repr data', ha='center', va='center', transform=ax_repr.transAxes)
-            ax_repr.set_title('L1 Distance to Goal Repr.', fontsize=PLOT_PARAMS["title_size"])
+            ax_repr.set_title(r'$\Vert z_k - z_g \Vert_1$', fontsize=PLOT_PARAMS["title_size"])
 
         ax_repr.tick_params(axis='both', labelsize=PLOT_PARAMS["tick_label_size"], length=PLOT_PARAMS["tick_length"])
 

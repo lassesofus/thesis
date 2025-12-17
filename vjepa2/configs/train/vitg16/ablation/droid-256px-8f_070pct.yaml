@@ -39,8 +39,8 @@ meta:
   dtype: bfloat16
   eval_freq: 100
   resume_checkpoint: null
-  load_predictor: false
-  pretrain_checkpoint: /data/s185927/vjepa2/weights/vitg-384.pt
+  load_predictor: true
+  pretrain_checkpoint: /home/s185927/.cache/torch/hub/checkpoints/vjepa2-ac-vitg.pt
   context_encoder_key: target_encoder
   target_encoder_key: target_encoder
   save_every_freq: 25

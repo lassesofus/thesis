@@ -1,0 +1,13 @@
+Predictor Finetuning Times
+==========================
+
+25% model:
+  Start:    2025-12-14 20:00:55
+  End:      2025-12-15 01:37:47
+  Duration: 5h 36m 52s (20212 seconds)
+
+50% model:
+  Start:    2025-12-15 01:37:47
+  End:      2025-12-15 07:04:17
+  Duration: 5h 26m 30s (19590 seconds)
+

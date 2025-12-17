@@ -54,6 +54,7 @@ import numpy as np
 import torch
 from torch.nn import functional as F
 from PIL import Image
+from scipy.spatial.transform import Rotation
 import pdb
 
 try:
@@ -105,6 +106,26 @@ def compute_new_pose(current_pos, delta_pos, delta_rpy):
     # In practice, you might want to integrate this properly with current orientation
     new_rpy = delta_rpy
     return new_pos, new_rpy
+
+
+def get_ee_orientation(sim, ee_sid):
+    """
+    Get end-effector orientation as euler angles (roll, pitch, yaw).
+
+    Args:
+        sim: MuJoCo simulation object
+        ee_sid: Site ID for end-effector
+
+    Returns:
+        rpy: numpy array [roll, pitch, yaw] in radians
+    """
+    # Get rotation matrix (3x3, stored as flat 9-element array in MuJoCo)
+    xmat = sim.data.site_xmat[ee_sid].reshape(3, 3)
+
+    # Convert to euler angles (xyz convention to match DROID/PyBullet)
+    rpy = Rotation.from_matrix(xmat).as_euler('xyz', degrees=False)
+
+    return rpy
 
 
 def capture_rgb_and_append(frames_list, sim, render, steps_per_frame,
@@ -322,8 +343,8 @@ def main(sim_path, horizon, radius, render, camera_name, out_dir, out_name,
         print(f"  RoboHive offset: {experiment_offset}")
         print(f"  DROID offset: {robohive_to_droid_pos(experiment_offset)}")
     elif experiment_type == 'y':
-        # DROID Y-axis = RoboHive X-axis
-        experiment_offset = np.array([0.2, 0.0, 0.0])
+        # DROID Y-axis = RoboHive X-axis (negative RoboHive X for positive DROID Y)
+        experiment_offset = np.array([-0.2, 0.0, 0.0])
         print(f"Experiment type: Y-axis (DROID frame)")
         print(f"  RoboHive offset: {experiment_offset}")
         print(f"  DROID offset: {robohive_to_droid_pos(experiment_offset)}")
@@ -448,8 +469,12 @@ def main(sim_path, horizon, radius, render, camera_name, out_dir, out_name,
         DROID → RoboHive transformation is needed because V-JEPA was trained on DROID data
         and outputs actions in DROID coordinate frame, but RoboHive uses different axes:
             DROID_x = RoboHive_y
-            DROID_y = RoboHive_x
+            DROID_y = -RoboHive_x
             DROID_z = RoboHive_z
+
+            RoboHive_x = -DROID_y
+            Robohive_y = DROID_x
+            RoboHive_z = DROID_z
 
         Args:
             action: [dx, dy, dz, droll, dpitch, dyaw, gripper] in DROID frame
@@ -713,8 +738,9 @@ def main(sim_path, horizon, radius, render, camera_name, out_dir, out_name,
             print(f"\n=== Phase 3: V-JEPA CEM Planning ({planning_steps} steps) ===")
             print(f"Using action transformation: {action_transform}")
 
-            # Create directory for planning images
-            if save_planning_images or visualize_planning:
+            # Create directory for planning images (only for first episode)
+            save_images_this_episode = (save_planning_images or visualize_planning) and episode == 0
+            if save_images_this_episode:
                 planning_img_dir = os.path.join(
                     experiment_out_dir,
                     f"planning_images_ep{episode}"
@@ -722,7 +748,8 @@ def main(sim_path, horizon, radius, render, camera_name, out_dir, out_name,
                 os.makedirs(planning_img_dir, exist_ok=True)
                 print(f"Saving planning images to: {planning_img_dir}")
 
-                # Save goal image for reference
+            # Save goal image for reference (only for first episode)
+            if save_images_this_episode:
                 try:
                     goal_img_path = os.path.join(planning_img_dir, "goal.png")
                     # Resize to 256x256 for individual image saves
@@ -777,7 +804,7 @@ def main(sim_path, horizon, radius, render, camera_name, out_dir, out_name,
                     clips = transform(combined_rgb).unsqueeze(0).to(device)  # [1, C, T, H, W]
 
                     # Save images if requested (save AFTER transform to see what model sees)
-                    if save_planning_images or visualize_planning:
+                    if save_images_this_episode:
                         try:
                             # Save raw current observation - resize to 256x256
                             raw_current_path = os.path.join(
@@ -827,7 +854,7 @@ def main(sim_path, horizon, radius, render, camera_name, out_dir, out_name,
                             print(f" Warning: Could not save transformed images: {e}")
 
                     # Create side-by-side visualization if requested
-                    if visualize_planning:
+                    if save_images_this_episode and visualize_planning:
                         try:
                             # Create visualization with both raw and transformed images
                             # Layout: [raw_current | transformed_current | transformed_goal]
@@ -919,9 +946,9 @@ def main(sim_path, horizon, radius, render, camera_name, out_dir, out_name,
                     phase3_repr_l1_distances.append(repr_l1_distance)
                     print(f" Representation L1 distance: {repr_l1_distance:.6f}")
 
-                    # Build state tensor
+                    # Build state tensor with actual EE orientation
                     pos = current_ee_pos
-                    rpy = np.zeros(3, dtype=float)
+                    rpy = get_ee_orientation(sim, ee_sid)  # Use actual orientation
                     gripper_width = 0.0
                     current_state = np.concatenate([pos, rpy, [gripper_width]], axis=0)
                     states = torch.tensor(
@@ -1031,7 +1058,7 @@ def main(sim_path, horizon, radius, render, camera_name, out_dir, out_name,
                 print(f"\nFinal distance to target: {final_distance:.4f}m")
 
                 # Save final state image if requested
-                if save_planning_images or visualize_planning:
+                if save_images_this_episode:
                     try:
                         final_rgb = sim.renderer.render_offscreen(
                             width=width,

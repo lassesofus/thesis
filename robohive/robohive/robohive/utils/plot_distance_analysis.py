@@ -74,9 +74,13 @@ def find_planning_images_dir(experiment_dir, episode):
 )
 @click.option('--episode', type=int, default=0, help='Episode number to use for picking images')
 @click.option('--threshold', type=float, default=0.05, help='Success threshold in meters')
-def main(experiment_type, episode, threshold):
+@click.option('--out_dir', type=str, default=None, help='Base directory containing reach_along_{x,y,z} subdirectories')
+def main(experiment_type, episode, threshold, out_dir):
     # Resolve experiment_dir from experiment_type
-    base_root = "/home/s185927/thesis/robohive/robohive/robohive/experiments"
+    if out_dir is None:
+        base_root = "/home/s185927/thesis/robohive/robohive/robohive/experiments"
+    else:
+        base_root = out_dir
     experiment_dir = os.path.join(base_root, f"reach_along_{experiment_type}")
 
     # Validate experiment directory exists

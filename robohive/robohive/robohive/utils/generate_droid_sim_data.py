@@ -902,8 +902,10 @@ def main(
         )
 
         # Measure final distance to target
+        # Note: final_ee_pos is in DROID frame, need to transform target_pos to DROID frame
         final_ee_pos = data['cartesian_position'][-1, :3]
-        final_distance = np.linalg.norm(final_ee_pos - target_pos)
+        target_pos_droid = robohive_to_droid_pos(target_pos)
+        final_distance = np.linalg.norm(final_ee_pos - target_pos_droid)
         success_reached = final_distance <= success_threshold
 
         print(f"  Final distance: {final_distance:.4f}m [{'SUCCESS' if success_reached else 'FAIL'}]")

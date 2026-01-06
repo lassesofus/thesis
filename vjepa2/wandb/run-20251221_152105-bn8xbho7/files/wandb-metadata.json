@@ -1,0 +1,22 @@
+{
+  "os": "Linux-6.12.0-55.31.1.el10_0.x86_64-x86_64-with-glibc2.39",
+  "python": "CPython 3.12.12",
+  "startedAt": "2025-12-21T14:21:05.235529Z",
+  "args": [
+    "--fname",
+    "/home/s185927/thesis/vjepa2/configs/train/vitg16/x_axis_finetune/x_axis_finetune_050pct.yaml",
+    "--devices",
+    "cuda:0"
+  ],
+  "program": "/home/s185927/thesis/experiments/sim_training_different_fractions/train_single_model_early_stopping.py",
+  "codePath": "experiments/sim_training_different_fractions/train_single_model_early_stopping.py",
+  "git": {
+    "remote": "git@github.com:lassesofus/thesis.git",
+    "commit": "ce658e143f37d111e141651c6bb68c7d72ff4aa1"
+  },
+  "email": "lassesofus@gmail.com",
+  "root": "/home/s185927/thesis/vjepa2",
+  "host": "comp-ws6211",
+  "executable": "/home/s185927/.conda/envs/vjepa2-312/bin/python",
+  "writerId": "67j2e85dcasm6klq2wu8bs2g9dj2809z"
+}

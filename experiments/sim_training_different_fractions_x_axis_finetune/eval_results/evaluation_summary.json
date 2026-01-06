@@ -1,0 +1,37 @@
+{
+  "x_axis_finetune_025pct": {
+    "mean_final_distance": 0.19462295334519303,
+    "std_final_distance": 0.0582439751693353,
+    "median_final_distance": 0.1818874843694111,
+    "success_rate": 0.0,
+    "num_samples": 10
+  },
+  "x_axis_finetune_050pct": {
+    "mean_final_distance": 0.17135516798390765,
+    "std_final_distance": 0.039420372171327094,
+    "median_final_distance": 0.1654394278866762,
+    "success_rate": 0.0,
+    "num_samples": 10
+  },
+  "x_axis_finetune_075pct": {
+    "mean_final_distance": 0.18638452803205768,
+    "std_final_distance": 0.06493230885635286,
+    "median_final_distance": 0.1679887044587253,
+    "success_rate": 0.0,
+    "num_samples": 10
+  },
+  "x_axis_finetune_100pct": {
+    "mean_final_distance": 0.19217083970896945,
+    "std_final_distance": 0.06775290200022448,
+    "median_final_distance": 0.17723457631055273,
+    "success_rate": 0.0,
+    "num_samples": 10
+  },
+  "meta_baseline": {
+    "mean_final_distance": 0.18585712419078884,
+    "std_final_distance": 0.0509845178409534,
+    "median_final_distance": 0.1735876079523535,
+    "success_rate": 0.0,
+    "num_samples": 10
+  }
+}

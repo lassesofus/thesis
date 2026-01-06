@@ -1,0 +1,151 @@
+[INFO    ][2025-12-21 17:23:20][root                ][init_video_model         ] VisionTransformer(
+  (patch_embed): PatchEmbed3D(
+    (proj): Conv3d(3, 1408, kernel_size=(2, 16, 16), stride=(2, 16, 16))
+  )
+  (blocks): ModuleList(
+    (0-39): 40 x Block(
+      (norm1): LayerNorm((1408,), eps=1e-06, elementwise_affine=True)
+      (attn): RoPEAttention(
+        (qkv): Linear(in_features=1408, out_features=4224, bias=True)
+        (attn_drop): Dropout(p=0.0, inplace=False)
+        (proj): Linear(in_features=1408, out_features=1408, bias=True)
+        (proj_drop): Dropout(p=0.0, inplace=False)
+      )
+      (drop_path): Identity()
+      (norm2): LayerNorm((1408,), eps=1e-06, elementwise_affine=True)
+      (mlp): MLP(
+        (fc1): Linear(in_features=1408, out_features=6144, bias=True)
+        (act): GELU(approximate='none')
+        (fc2): Linear(in_features=6144, out_features=1408, bias=True)
+        (drop): Dropout(p=0.0, inplace=False)
+      )
+    )
+  )
+  (norm): LayerNorm((1408,), eps=1e-06, elementwise_affine=True)
+)
+[INFO    ][2025-12-21 17:23:20][root                ][init_video_model         ] VisionTransformerPredictorAC(
+  (predictor_embed): Linear(in_features=1408, out_features=1024, bias=True)
+  (action_encoder): Linear(in_features=7, out_features=1024, bias=True)
+  (state_encoder): Linear(in_features=7, out_features=1024, bias=True)
+  (extrinsics_encoder): Linear(in_features=6, out_features=1024, bias=True)
+  (predictor_blocks): ModuleList(
+    (0-23): 24 x ACBlock(
+      (norm1): LayerNorm((1024,), eps=1e-06, elementwise_affine=True)
+      (attn): ACRoPEAttention(
+        (qkv): Linear(in_features=1024, out_features=3072, bias=True)
+        (attn_drop): Dropout(p=0.0, inplace=False)
+        (proj): Linear(in_features=1024, out_features=1024, bias=True)
+        (proj_drop): Dropout(p=0.0, inplace=False)
+      )
+      (drop_path): Identity()
+      (norm2): LayerNorm((1024,), eps=1e-06, elementwise_affine=True)
+      (mlp): MLP(
+        (fc1): Linear(in_features=1024, out_features=4096, bias=True)
+        (act): GELU(approximate='none')
+        (fc2): Linear(in_features=4096, out_features=1024, bias=True)
+        (drop): Dropout(p=0.0, inplace=False)
+      )
+    )
+  )
+  (predictor_norm): LayerNorm((1024,), eps=1e-06, elementwise_affine=True)
+  (predictor_proj): Linear(in_features=1024, out_features=1408, bias=True)
+)
+[INFO    ][2025-12-21 17:23:20][root                ][init_video_model         ] Encoder number of parameters: 1012173952
+[INFO    ][2025-12-21 17:23:20][root                ][init_video_model         ] Predictor number of parameters: 305220992
+[INFO    ][2025-12-21 17:23:20][root                ][init_data                ] VideoDataset unsupervised data loader created
+[INFO    ][2025-12-21 17:23:20][root                ][init_data                ] VideoDataset unsupervised data loader created
+[INFO    ][2025-12-21 17:23:20][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Validation loader created with 20 batches
+[INFO    ][2025-12-21 17:23:20][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] iterations per epoch/dataset length: 300/20
+[INFO    ][2025-12-21 17:23:20][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Single GPU mode - not using DistributedDataParallel
+[INFO    ][2025-12-21 17:23:20][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Loading pretrained weights (single GPU mode) from /home/s185927/.cache/torch/hub/checkpoints/vjepa2-ac-vitg.pt
+[INFO    ][2025-12-21 17:23:22][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Loaded pretrained encoder with msg: <All keys matched successfully>
+[INFO    ][2025-12-21 17:23:22][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Loaded pretrained target encoder with msg: <All keys matched successfully>
+[INFO    ][2025-12-21 17:23:22][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Loaded pretrained predictor with msg: <All keys matched successfully>
+[INFO    ][2025-12-21 17:23:22][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Initializing loader...
+[INFO    ][2025-12-21 17:23:22][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Epoch 1
+[INFO    ][2025-12-21 17:23:28][app.vjepa_droid.train_with_early_stopping][log_stats                ] [1,     0] loss: 0.756 [0.37, 0.39] [wd: 4.00e-02] [lr: 2.01e-05] [mem: 2.05e+04] [iter: 5465.0 ms] [gpu: 1919.0 ms] [data: 3545.9 ms]
+[INFO    ][2025-12-21 17:23:40][app.vjepa_droid.train_with_early_stopping][log_stats                ] [1,    10] loss: 0.715 [0.36, 0.36] [wd: 4.00e-02] [lr: 2.06e-05] [mem: 2.05e+04] [iter: 1639.7 ms] [gpu: 1316.4 ms] [data: 322.5 ms]
+[INFO    ][2025-12-21 17:23:52][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Exhausted data loaders. Refreshing...
+[INFO    ][2025-12-21 17:23:54][app.vjepa_droid.train_with_early_stopping][log_stats                ] [1,    20] loss: 0.707 [0.35, 0.35] [wd: 4.00e-02] [lr: 2.11e-05] [mem: 2.05e+04] [iter: 1501.6 ms] [gpu: 1293.0 ms] [data: 207.8 ms]
+[INFO    ][2025-12-21 17:24:06][app.vjepa_droid.train_with_early_stopping][log_stats                ] [1,    30] loss: 0.698 [0.35, 0.35] [wd: 4.00e-02] [lr: 2.17e-05] [mem: 2.05e+04] [iter: 1418.0 ms] [gpu: 1276.3 ms] [data: 140.8 ms]
+[INFO    ][2025-12-21 17:24:17][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Exhausted data loaders. Refreshing...
+[INFO    ][2025-12-21 17:24:20][app.vjepa_droid.train_with_early_stopping][log_stats                ] [1,    40] loss: 0.691 [0.35, 0.35] [wd: 4.00e-02] [lr: 2.22e-05] [mem: 2.05e+04] [iter: 1393.9 ms] [gpu: 1268.0 ms] [data: 125.0 ms]
+[INFO    ][2025-12-21 17:24:32][app.vjepa_droid.train_with_early_stopping][log_stats                ] [1,    50] loss: 0.686 [0.34, 0.34] [wd: 4.00e-02] [lr: 2.27e-05] [mem: 2.05e+04] [iter: 1364.8 ms] [gpu: 1263.4 ms] [data: 100.5 ms]
+[INFO    ][2025-12-21 17:24:43][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Exhausted data loaders. Refreshing...
+[INFO    ][2025-12-21 17:24:46][app.vjepa_droid.train_with_early_stopping][log_stats                ] [1,    60] loss: 0.681 [0.34, 0.34] [wd: 4.00e-02] [lr: 2.33e-05] [mem: 2.05e+04] [iter: 1362.6 ms] [gpu: 1264.4 ms] [data: 97.4 ms]
+[INFO    ][2025-12-21 17:24:58][app.vjepa_droid.train_with_early_stopping][log_stats                ] [1,    70] loss: 0.676 [0.34, 0.34] [wd: 4.00e-02] [lr: 2.38e-05] [mem: 2.05e+04] [iter: 1346.1 ms] [gpu: 1261.5 ms] [data: 83.7 ms]
+[INFO    ][2025-12-21 17:25:09][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Exhausted data loaders. Refreshing...
+[INFO    ][2025-12-21 17:25:11][app.vjepa_droid.train_with_early_stopping][log_stats                ] [1,    80] loss: 0.672 [0.34, 0.33] [wd: 4.00e-02] [lr: 2.43e-05] [mem: 2.05e+04] [iter: 1345.5 ms] [gpu: 1261.4 ms] [data: 83.2 ms]
+[INFO    ][2025-12-21 17:25:24][app.vjepa_droid.train_with_early_stopping][log_stats                ] [1,    90] loss: 0.667 [0.34, 0.33] [wd: 4.00e-02] [lr: 2.49e-05] [mem: 2.05e+04] [iter: 1332.1 ms] [gpu: 1257.1 ms] [data: 74.1 ms]
+[INFO    ][2025-12-21 17:25:35][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Exhausted data loaders. Refreshing...
+[INFO    ][2025-12-21 17:25:37][app.vjepa_droid.train_with_early_stopping][log_stats                ] [1,   100] loss: 0.663 [0.33, 0.33] [wd: 4.00e-02] [lr: 2.54e-05] [mem: 2.05e+04] [iter: 1332.9 ms] [gpu: 1257.6 ms] [data: 74.4 ms]
+[INFO    ][2025-12-21 17:25:49][app.vjepa_droid.train_with_early_stopping][log_stats                ] [1,   110] loss: 0.660 [0.33, 0.33] [wd: 4.00e-02] [lr: 2.59e-05] [mem: 2.05e+04] [iter: 1324.6 ms] [gpu: 1256.0 ms] [data: 67.7 ms]
+[INFO    ][2025-12-21 17:26:01][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Exhausted data loaders. Refreshing...
+[INFO    ][2025-12-21 17:26:03][app.vjepa_droid.train_with_early_stopping][log_stats                ] [1,   120] loss: 0.657 [0.33, 0.33] [wd: 4.00e-02] [lr: 2.65e-05] [mem: 2.05e+04] [iter: 1325.6 ms] [gpu: 1257.0 ms] [data: 67.7 ms]
+[INFO    ][2025-12-21 17:26:15][app.vjepa_droid.train_with_early_stopping][log_stats                ] [1,   130] loss: 0.653 [0.33, 0.32] [wd: 4.00e-02] [lr: 2.70e-05] [mem: 2.05e+04] [iter: 1319.9 ms] [gpu: 1256.4 ms] [data: 62.6 ms]
+[INFO    ][2025-12-21 17:26:26][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Exhausted data loaders. Refreshing...
+[INFO    ][2025-12-21 17:26:29][app.vjepa_droid.train_with_early_stopping][log_stats                ] [1,   140] loss: 0.649 [0.33, 0.32] [wd: 4.00e-02] [lr: 2.75e-05] [mem: 2.05e+04] [iter: 1319.9 ms] [gpu: 1255.5 ms] [data: 63.5 ms]
+[INFO    ][2025-12-21 17:26:41][app.vjepa_droid.train_with_early_stopping][log_stats                ] [1,   150] loss: 0.646 [0.33, 0.32] [wd: 4.00e-02] [lr: 2.81e-05] [mem: 2.05e+04] [iter: 1316.5 ms] [gpu: 1256.3 ms] [data: 59.3 ms]
+[INFO    ][2025-12-21 17:26:53][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Exhausted data loaders. Refreshing...
+[INFO    ][2025-12-21 17:26:55][app.vjepa_droid.train_with_early_stopping][log_stats                ] [1,   160] loss: 0.643 [0.32, 0.32] [wd: 4.00e-02] [lr: 2.86e-05] [mem: 2.05e+04] [iter: 1318.3 ms] [gpu: 1257.1 ms] [data: 60.3 ms]
+[INFO    ][2025-12-21 17:27:07][app.vjepa_droid.train_with_early_stopping][log_stats                ] [1,   170] loss: 0.640 [0.32, 0.32] [wd: 4.00e-02] [lr: 2.91e-05] [mem: 2.05e+04] [iter: 1314.2 ms] [gpu: 1256.6 ms] [data: 56.7 ms]
+[INFO    ][2025-12-21 17:27:18][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Exhausted data loaders. Refreshing...
+[INFO    ][2025-12-21 17:27:21][app.vjepa_droid.train_with_early_stopping][log_stats                ] [1,   180] loss: 0.638 [0.32, 0.32] [wd: 4.00e-02] [lr: 2.97e-05] [mem: 2.05e+04] [iter: 1315.3 ms] [gpu: 1257.1 ms] [data: 57.4 ms]
+[INFO    ][2025-12-21 17:27:33][app.vjepa_droid.train_with_early_stopping][log_stats                ] [1,   190] loss: 0.635 [0.32, 0.32] [wd: 4.00e-02] [lr: 3.02e-05] [mem: 2.05e+04] [iter: 1310.4 ms] [gpu: 1255.2 ms] [data: 54.4 ms]
+[INFO    ][2025-12-21 17:27:44][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Exhausted data loaders. Refreshing...
+[INFO    ][2025-12-21 17:27:46][app.vjepa_droid.train_with_early_stopping][log_stats                ] [1,   200] loss: 0.633 [0.32, 0.31] [wd: 4.00e-02] [lr: 3.07e-05] [mem: 2.05e+04] [iter: 1312.1 ms] [gpu: 1255.1 ms] [data: 56.1 ms]
+[INFO    ][2025-12-21 17:27:59][app.vjepa_droid.train_with_early_stopping][log_stats                ] [1,   210] loss: 0.631 [0.32, 0.31] [wd: 4.00e-02] [lr: 3.13e-05] [mem: 2.05e+04] [iter: 1308.8 ms] [gpu: 1254.5 ms] [data: 53.4 ms]
+[INFO    ][2025-12-21 17:28:10][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Exhausted data loaders. Refreshing...
+[INFO    ][2025-12-21 17:28:12][app.vjepa_droid.train_with_early_stopping][log_stats                ] [1,   220] loss: 0.629 [0.32, 0.31] [wd: 4.00e-02] [lr: 3.18e-05] [mem: 2.05e+04] [iter: 1309.8 ms] [gpu: 1254.8 ms] [data: 54.1 ms]
+[INFO    ][2025-12-21 17:28:24][app.vjepa_droid.train_with_early_stopping][log_stats                ] [1,   230] loss: 0.627 [0.32, 0.31] [wd: 4.00e-02] [lr: 3.23e-05] [mem: 2.05e+04] [iter: 1307.3 ms] [gpu: 1254.7 ms] [data: 51.7 ms]
+[INFO    ][2025-12-21 17:28:36][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Exhausted data loaders. Refreshing...
+[INFO    ][2025-12-21 17:28:38][app.vjepa_droid.train_with_early_stopping][log_stats                ] [1,   240] loss: 0.625 [0.31, 0.31] [wd: 4.00e-02] [lr: 3.29e-05] [mem: 2.05e+04] [iter: 1307.9 ms] [gpu: 1254.5 ms] [data: 52.5 ms]
+[INFO    ][2025-12-21 17:28:50][app.vjepa_droid.train_with_early_stopping][log_stats                ] [1,   250] loss: 0.623 [0.31, 0.31] [wd: 4.00e-02] [lr: 3.34e-05] [mem: 2.05e+04] [iter: 1305.9 ms] [gpu: 1254.6 ms] [data: 50.4 ms]
+[INFO    ][2025-12-21 17:29:02][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Exhausted data loaders. Refreshing...
+[INFO    ][2025-12-21 17:29:04][app.vjepa_droid.train_with_early_stopping][log_stats                ] [1,   260] loss: 0.622 [0.31, 0.31] [wd: 4.00e-02] [lr: 3.39e-05] [mem: 2.05e+04] [iter: 1307.8 ms] [gpu: 1255.2 ms] [data: 51.7 ms]
+[INFO    ][2025-12-21 17:29:16][app.vjepa_droid.train_with_early_stopping][log_stats                ] [1,   270] loss: 0.620 [0.31, 0.31] [wd: 4.00e-02] [lr: 3.45e-05] [mem: 2.05e+04] [iter: 1305.5 ms] [gpu: 1254.9 ms] [data: 49.8 ms]
+[INFO    ][2025-12-21 17:29:27][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Exhausted data loaders. Refreshing...
+[INFO    ][2025-12-21 17:29:30][app.vjepa_droid.train_with_early_stopping][log_stats                ] [1,   280] loss: 0.619 [0.31, 0.31] [wd: 4.00e-02] [lr: 3.50e-05] [mem: 2.05e+04] [iter: 1306.6 ms] [gpu: 1254.7 ms] [data: 51.0 ms]
+[INFO    ][2025-12-21 17:29:42][app.vjepa_droid.train_with_early_stopping][log_stats                ] [1,   290] loss: 0.617 [0.31, 0.31] [wd: 4.00e-02] [lr: 3.55e-05] [mem: 2.05e+04] [iter: 1304.2 ms] [gpu: 1254.1 ms] [data: 49.2 ms]
+[INFO    ][2025-12-21 17:29:53][app.vjepa_droid.train_with_early_stopping][log_stats                ] [1,   299] loss: 0.616 [0.31, 0.31] [wd: 4.00e-02] [lr: 3.60e-05] [mem: 2.05e+04] [iter: 1302.1 ms] [gpu: 1253.4 ms] [data: 47.8 ms]
+[INFO    ][2025-12-21 17:29:53][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] avg. loss 0.616
+[INFO    ][2025-12-21 17:30:01][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Epoch 2
+[INFO    ][2025-12-21 17:30:01][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Exhausted data loaders. Refreshing...
+[INFO    ][2025-12-21 17:30:03][app.vjepa_droid.train_with_early_stopping][log_stats                ] [2,     0] loss: 0.563 [0.28, 0.28] [wd: 4.00e-02] [lr: 3.61e-05] [mem: 2.05e+04] [iter: 2124.6 ms] [gpu: 1353.8 ms] [data: 769.9 ms]
+[INFO    ][2025-12-21 17:30:15][app.vjepa_droid.train_with_early_stopping][log_stats                ] [2,    10] loss: 0.568 [0.29, 0.28] [wd: 4.00e-02] [lr: 3.66e-05] [mem: 2.05e+04] [iter: 1331.3 ms] [gpu: 1260.2 ms] [data: 70.1 ms]
+[INFO    ][2025-12-21 17:30:27][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Exhausted data loaders. Refreshing...
+[INFO    ][2025-12-21 17:30:29][app.vjepa_droid.train_with_early_stopping][log_stats                ] [2,    20] loss: 0.568 [0.29, 0.28] [wd: 4.00e-02] [lr: 3.71e-05] [mem: 2.05e+04] [iter: 1333.0 ms] [gpu: 1258.4 ms] [data: 73.6 ms]
+[INFO    ][2025-12-21 17:30:41][app.vjepa_droid.train_with_early_stopping][log_stats                ] [2,    30] loss: 0.567 [0.29, 0.28] [wd: 4.00e-02] [lr: 3.77e-05] [mem: 2.05e+04] [iter: 1312.2 ms] [gpu: 1261.4 ms] [data: 49.9 ms]
+[INFO    ][2025-12-21 17:30:52][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Exhausted data loaders. Refreshing...
+[INFO    ][2025-12-21 17:30:55][app.vjepa_droid.train_with_early_stopping][log_stats                ] [2,    40] loss: 0.567 [0.29, 0.28] [wd: 4.00e-02] [lr: 3.82e-05] [mem: 2.05e+04] [iter: 1319.9 ms] [gpu: 1261.4 ms] [data: 57.6 ms]
+[INFO    ][2025-12-21 17:31:07][app.vjepa_droid.train_with_early_stopping][log_stats                ] [2,    50] loss: 0.567 [0.29, 0.28] [wd: 4.00e-02] [lr: 3.87e-05] [mem: 2.05e+04] [iter: 1304.7 ms] [gpu: 1257.5 ms] [data: 46.3 ms]
+[INFO    ][2025-12-21 17:31:18][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Exhausted data loaders. Refreshing...
+[INFO    ][2025-12-21 17:31:21][app.vjepa_droid.train_with_early_stopping][log_stats                ] [2,    60] loss: 0.566 [0.29, 0.28] [wd: 4.00e-02] [lr: 3.93e-05] [mem: 2.05e+04] [iter: 1311.3 ms] [gpu: 1260.7 ms] [data: 49.7 ms]
+[INFO    ][2025-12-21 17:31:33][app.vjepa_droid.train_with_early_stopping][log_stats                ] [2,    70] loss: 0.566 [0.29, 0.28] [wd: 4.00e-02] [lr: 3.98e-05] [mem: 2.05e+04] [iter: 1302.9 ms] [gpu: 1259.2 ms] [data: 42.8 ms]
+[INFO    ][2025-12-21 17:31:44][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Exhausted data loaders. Refreshing...
+[INFO    ][2025-12-21 17:31:46][app.vjepa_droid.train_with_early_stopping][log_stats                ] [2,    80] loss: 0.566 [0.29, 0.28] [wd: 4.00e-02] [lr: 4.03e-05] [mem: 2.05e+04] [iter: 1304.1 ms] [gpu: 1257.9 ms] [data: 45.2 ms]
+[INFO    ][2025-12-21 17:31:59][app.vjepa_droid.train_with_early_stopping][log_stats                ] [2,    90] loss: 0.565 [0.29, 0.28] [wd: 4.00e-02] [lr: 4.09e-05] [mem: 2.05e+04] [iter: 1297.8 ms] [gpu: 1256.6 ms] [data: 40.3 ms]
+[INFO    ][2025-12-21 17:32:10][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Exhausted data loaders. Refreshing...
+[INFO    ][2025-12-21 17:32:12][app.vjepa_droid.train_with_early_stopping][log_stats                ] [2,   100] loss: 0.565 [0.29, 0.28] [wd: 4.00e-02] [lr: 4.14e-05] [mem: 2.05e+04] [iter: 1301.3 ms] [gpu: 1256.1 ms] [data: 44.3 ms]
+[INFO    ][2025-12-21 17:32:24][app.vjepa_droid.train_with_early_stopping][log_stats                ] [2,   110] loss: 0.565 [0.29, 0.28] [wd: 4.00e-02] [lr: 4.19e-05] [mem: 2.05e+04] [iter: 1296.0 ms] [gpu: 1254.8 ms] [data: 40.3 ms]
+[INFO    ][2025-12-21 17:32:36][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Exhausted data loaders. Refreshing...
+[INFO    ][2025-12-21 17:32:38][app.vjepa_droid.train_with_early_stopping][log_stats                ] [2,   120] loss: 0.564 [0.29, 0.28] [wd: 4.00e-02] [lr: 4.25e-05] [mem: 2.05e+04] [iter: 1300.0 ms] [gpu: 1254.9 ms] [data: 44.2 ms]
+[INFO    ][2025-12-21 17:32:50][app.vjepa_droid.train_with_early_stopping][log_stats                ] [2,   130] loss: 0.564 [0.29, 0.28] [wd: 4.00e-02] [lr: 4.30e-05] [mem: 2.05e+04] [iter: 1295.2 ms] [gpu: 1253.5 ms] [data: 40.8 ms]
+[INFO    ][2025-12-21 17:33:01][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Exhausted data loaders. Refreshing...
+[INFO    ][2025-12-21 17:33:03][app.vjepa_droid.train_with_early_stopping][log_stats                ] [2,   140] loss: 0.564 [0.29, 0.28] [wd: 4.00e-02] [lr: 4.35e-05] [mem: 2.05e+04] [iter: 1295.7 ms] [gpu: 1252.0 ms] [data: 42.8 ms]
+[INFO    ][2025-12-21 17:33:16][app.vjepa_droid.train_with_early_stopping][log_stats                ] [2,   150] loss: 0.565 [0.29, 0.28] [wd: 4.00e-02] [lr: 4.41e-05] [mem: 2.05e+04] [iter: 1292.0 ms] [gpu: 1251.1 ms] [data: 40.0 ms]
+[INFO    ][2025-12-21 17:33:27][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Exhausted data loaders. Refreshing...
+[INFO    ][2025-12-21 17:33:29][app.vjepa_droid.train_with_early_stopping][log_stats                ] [2,   160] loss: 0.565 [0.29, 0.28] [wd: 4.00e-02] [lr: 4.46e-05] [mem: 2.05e+04] [iter: 1295.0 ms] [gpu: 1250.9 ms] [data: 43.1 ms]
+[INFO    ][2025-12-21 17:33:41][app.vjepa_droid.train_with_early_stopping][log_stats                ] [2,   170] loss: 0.564 [0.28, 0.28] [wd: 4.00e-02] [lr: 4.51e-05] [mem: 2.05e+04] [iter: 1290.9 ms] [gpu: 1249.3 ms] [data: 40.6 ms]
+[INFO    ][2025-12-21 17:33:52][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Exhausted data loaders. Refreshing...
+[INFO    ][2025-12-21 17:33:55][app.vjepa_droid.train_with_early_stopping][log_stats                ] [2,   180] loss: 0.564 [0.28, 0.28] [wd: 4.00e-02] [lr: 4.57e-05] [mem: 2.05e+04] [iter: 1293.0 ms] [gpu: 1249.0 ms] [data: 43.1 ms]
+[INFO    ][2025-12-21 17:34:07][app.vjepa_droid.train_with_early_stopping][log_stats                ] [2,   190] loss: 0.564 [0.28, 0.28] [wd: 4.00e-02] [lr: 4.62e-05] [mem: 2.05e+04] [iter: 1290.1 ms] [gpu: 1248.4 ms] [data: 40.8 ms]
+[INFO    ][2025-12-21 17:34:18][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Exhausted data loaders. Refreshing...
+[INFO    ][2025-12-21 17:34:20][app.vjepa_droid.train_with_early_stopping][log_stats                ] [2,   200] loss: 0.563 [0.28, 0.28] [wd: 4.00e-02] [lr: 4.67e-05] [mem: 2.05e+04] [iter: 1292.9 ms] [gpu: 1249.5 ms] [data: 42.4 ms]
+[INFO    ][2025-12-21 17:34:33][app.vjepa_droid.train_with_early_stopping][log_stats                ] [2,   210] loss: 0.563 [0.28, 0.28] [wd: 4.00e-02] [lr: 4.73e-05] [mem: 2.05e+04] [iter: 1291.0 ms] [gpu: 1249.7 ms] [data: 40.4 ms]
+[INFO    ][2025-12-21 17:34:44][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Exhausted data loaders. Refreshing...
+[INFO    ][2025-12-21 17:34:47][app.vjepa_droid.train_with_early_stopping][log_stats                ] [2,   220] loss: 0.562 [0.28, 0.28] [wd: 4.00e-02] [lr: 4.78e-05] [mem: 2.05e+04] [iter: 1293.7 ms] [gpu: 1250.5 ms] [data: 42.3 ms]
+[INFO    ][2025-12-21 17:34:59][app.vjepa_droid.train_with_early_stopping][log_stats                ] [2,   230] loss: 0.562 [0.28, 0.28] [wd: 4.00e-02] [lr: 4.83e-05] [mem: 2.05e+04] [iter: 1291.3 ms] [gpu: 1249.9 ms] [data: 40.5 ms]
+[INFO    ][2025-12-21 17:35:10][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Exhausted data loaders. Refreshing...
+[INFO    ][2025-12-21 17:35:12][app.vjepa_droid.train_with_early_stopping][log_stats                ] [2,   240] loss: 0.561 [0.28, 0.28] [wd: 4.00e-02] [lr: 4.89e-05] [mem: 2.05e+04] [iter: 1292.3 ms] [gpu: 1249.6 ms] [data: 41.8 ms]
+[INFO    ][2025-12-21 17:35:24][app.vjepa_droid.train_with_early_stopping][log_stats                ] [2,   250] loss: 0.561 [0.28, 0.28] [wd: 4.00e-02] [lr: 4.94e-05] [mem: 2.05e+04] [iter: 1289.6 ms] [gpu: 1248.5 ms] [data: 40.1 ms]

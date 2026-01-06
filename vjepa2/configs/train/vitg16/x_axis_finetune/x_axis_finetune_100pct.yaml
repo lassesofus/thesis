@@ -8,7 +8,7 @@ data:
   dataset_fpcs:
   - 8
   datasets:
-  - /data/s185927/droid_sim/axis_aligned/x/splits/train_100pct.csv
+  - /data/s185927/droid_sim/axis_aligned/splits/train_100pct.csv
   fps: 4
   num_workers: 12
   patch_size: 16
@@ -20,8 +20,8 @@ data_aug:
   horizontal_flip: false
   motion_shift: false
   random_resize_aspect_ratio:
-  - 0.75
-  - 1.35
+  - 1.0
+  - 1.0
   random_resize_scale:
   - 1.777
   - 1.777
@@ -45,8 +45,8 @@ meta:
   target_encoder_key: target_encoder
   use_sdpa: true
   load_encoder: true
-  early_stopping_patience: 50
-  val_freq: 5
+  early_stopping_patience: 10
+  val_freq: 1
   early_stopping_min_delta: 0.001
 model:
   model_name: vit_giant_xformers
@@ -79,7 +79,7 @@ val_data:
   dataset_fpcs:
   - 8
   datasets:
-  - /data/s185927/droid_sim/axis_aligned/x/splits/val_trajectories.csv
+  - /data/s185927/droid_sim/axis_aligned/splits/val_trajectories.csv
   fps: 4
   num_workers: 12
   patch_size: 16

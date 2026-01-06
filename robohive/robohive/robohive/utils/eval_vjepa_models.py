@@ -50,6 +50,8 @@ import click
 import numpy as np
 import torch
 from torch.nn import functional as F
+from scipy.spatial.transform import Rotation
+from PIL import Image
 
 # Add V-JEPA to path
 _vjepa_root = "/home/s185927/thesis/vjepa2"
@@ -69,6 +71,15 @@ ARM_JNT0 = np.array([
     -0.0321842, -0.394346, 0.00932319,
     -2.77917, -0.011826, 0.713889, 1.53183
 ])
+
+
+def get_ee_orientation(sim, ee_sid):
+    """
+    Get end-effector orientation as euler angles (roll, pitch, yaw).
+    """
+    xmat = sim.data.site_xmat[ee_sid].reshape(3, 3)
+    rpy = Rotation.from_matrix(xmat).as_euler('xyz', degrees=False)
+    return rpy
 
 
 class ModelConfig:
@@ -125,7 +136,7 @@ def load_model(config, device):
     transform = make_transforms(
         random_horizontal_flip=False,
         random_resize_aspect_ratio=(1., 1.),
-        random_resize_scale=(1., 1.),
+        random_resize_scale=(1.777, 1.777),  # Match training config
         reprob=0.,
         auto_augment=False,
         motion_shift=False,
@@ -218,12 +229,54 @@ def transform_action(action, transform_type='none'):
     return transformed
 
 
+def transform_pose_to_droid_frame(pose):
+    """
+    Transform pose from RoboHive coordinate frame to DROID coordinate frame.
+
+    This is the same transformation used in generate_droid_sim_data.py when saving
+    training data. It must be applied to the current EE pose before passing to the
+    model during evaluation, since the model was trained on DROID-frame data.
+
+    Transformation (RoboHive → DROID):
+        DROID_x = RoboHive_y
+        DROID_y = -RoboHive_x
+        DROID_z = RoboHive_z
+
+    Args:
+        pose: [x, y, z, roll, pitch, yaw] in RoboHive frame
+
+    Returns:
+        transformed_pose: [x, y, z, roll, pitch, yaw] in DROID frame
+    """
+    transformed = pose.copy()
+
+    # Transform position: DROID_x = RoboHive_y, DROID_y = -RoboHive_x
+    transformed[0] = pose[1]    # DROID_x = RoboHive_y
+    transformed[1] = -pose[0]   # DROID_y = -RoboHive_x
+    transformed[2] = pose[2]    # DROID_z = RoboHive_z
+
+    # Transform orientation: swap roll/pitch and negate new pitch
+    transformed[3] = pose[4]    # new_roll = old_pitch
+    transformed[4] = -pose[3]   # new_pitch = -old_roll
+    transformed[5] = pose[5]    # new_yaw = old_yaw
+
+    return transformed
+
+
 def evaluate_sample(sample, sim, ee_sid, encoder, predictor, transform,
                    world_model, tokens_per_frame, planning_steps,
                    horizon, step_dt, device, action_transform='none',
-                   camera_name='left_cam', width=640, height=480, device_id=0):
-    """Evaluate planning on a single test sample."""
+                   camera_name='left_cam', width=640, height=480, device_id=0,
+                   save_images=False, image_dir=None):
+    """Evaluate planning on a single test sample.
+
+    If save_images=True and image_dir is provided, saves:
+    - goal.png: The goal image
+    - step_N.png: Current observation at each planning step
+    - final.png: Final observation after planning
+    """
     target_pos = np.array(sample['target_position'])
+    saved_images = {}  # Store images if requested
 
     # Reset to start
     sim.data.qpos[:ARM_nJnt] = ARM_JNT0
@@ -257,6 +310,12 @@ def evaluate_sample(sample, sim, ee_sid, encoder, predictor, transform,
         width=width, height=height, camera_id=camera_name, device_id=device_id
     )
 
+    # Save goal image if requested
+    if save_images and image_dir:
+        os.makedirs(image_dir, exist_ok=True)
+        goal_img = Image.fromarray(goal_rgb)
+        goal_img.save(os.path.join(image_dir, 'goal.png'))
+
     # Phase 2: Return to start
     return_waypoints = generate_joint_space_min_jerk(
         start=current_joint_pos,
@@ -276,11 +335,17 @@ def evaluate_sample(sample, sim, ee_sid, encoder, predictor, transform,
             current_ee_pos = sim.data.site_xpos[ee_sid].copy()
             distance = np.linalg.norm(current_ee_pos - target_pos)
             distances.append(distance)
+            print(f"      Step {step_idx + 1}/{planning_steps}: dist={distance:.4f}m")
 
             # Capture current RGB
             current_rgb = sim.renderer.render_offscreen(
                 width=width, height=height, camera_id=camera_name, device_id=device_id
             )
+
+            # Save step image if requested
+            if save_images and image_dir:
+                step_img = Image.fromarray(current_rgb)
+                step_img.save(os.path.join(image_dir, f'step_{step_idx}.png'))
 
             # Prepare input
             combined_rgb = np.stack([current_rgb, goal_rgb], axis=0)
@@ -299,22 +364,23 @@ def evaluate_sample(sample, sim, ee_sid, encoder, predictor, transform,
             repr_l1_distance = torch.mean(torch.abs(z_n - z_goal)).item()
             repr_distances.append(repr_l1_distance)
 
-            # Build state
-            pos = current_ee_pos
-            rpy = np.zeros(3)
-            gripper = 0.0
-            current_state = np.concatenate([pos, rpy, [gripper]])
+            # Build state in DROID frame (model was trained on DROID-frame data)
+            robohive_rpy = get_ee_orientation(sim, ee_sid)
+            robohive_pose = np.concatenate([current_ee_pos, robohive_rpy])
+            droid_pose = transform_pose_to_droid_frame(robohive_pose)
+            gripper = 1.0  # Match training data (DROID closed convention)
+            current_state = np.concatenate([droid_pose, [gripper]])
             states = torch.tensor(current_state, device=device).unsqueeze(0).unsqueeze(0)
             s_n = states[:, :1].to(dtype=z_n.dtype)
 
-            # Plan action
+            # Plan action (model outputs DROID frame, transform to RoboHive for execution)
             actions = world_model.infer_next_action(z_n, s_n, z_goal).cpu().numpy()
             transformed_action = transform_action(actions[0], action_transform)
 
-            # Execute action
+            # Execute action (use RoboHive frame positions for IK)
             try:
                 planned_delta = transformed_action[:7]
-                new_pos, new_rpy = compute_new_pose(pos, planned_delta[:3], planned_delta[3:6])
+                new_pos, new_rpy = compute_new_pose(current_ee_pos, planned_delta[:3], planned_delta[3:6])
 
                 ik_res = qpos_from_site_pose(
                     physics=sim,
@@ -343,6 +409,14 @@ def evaluate_sample(sample, sim, ee_sid, encoder, predictor, transform,
         final_ee_pos = sim.data.site_xpos[ee_sid].copy()
         final_distance = np.linalg.norm(final_ee_pos - target_pos)
         distances.append(final_distance)
+
+        # Save final image if requested
+        if save_images and image_dir:
+            final_rgb = sim.renderer.render_offscreen(
+                width=width, height=height, camera_id=camera_name, device_id=device_id
+            )
+            final_img = Image.fromarray(final_rgb)
+            final_img.save(os.path.join(image_dir, 'final.png'))
 
     return {
         'final_distance': float(final_distance),
@@ -374,9 +448,13 @@ def evaluate_sample(sample, sim, ee_sid, encoder, predictor, transform,
 @click.option('--action_transform', type=click.Choice(['none', 'swap_xy_negate_x', 'swap_xy']),
               default='none',
               help='Action transformation: none (training data in RoboHive frame), swap_xy_negate_x (DROID→RoboHive), swap_xy (legacy)')
+@click.option('--save_images', is_flag=True, default=False,
+              help='Save visualization images (goal, step observations, final) for each sample')
+@click.option('--split', type=click.Choice(['train', 'test']), default='test',
+              help='Which data split to evaluate on (train or test)')
 def main(metadata, model_dir, planning_steps, out_dir, horizon, sim_path,
-         max_samples, checkpoint_name, action_transform):
-    """Evaluate V-JEPA planning on test samples."""
+         max_samples, checkpoint_name, action_transform, save_images, split):
+    """Evaluate V-JEPA planning on samples from the specified split."""
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"Using device: {device}")
@@ -387,11 +465,11 @@ def main(metadata, model_dir, planning_steps, out_dir, horizon, sim_path,
     with open(metadata, 'r') as f:
         all_metadata = json.load(f)
 
-    test_samples = [m for m in all_metadata if m['split'] == 'test']
-    print(f"Found {len(test_samples)} test samples")
+    samples = [m for m in all_metadata if m['split'] == split]
+    print(f"Found {len(samples)} {split} samples")
 
     if max_samples:
-        test_samples = test_samples[:max_samples]
+        samples = samples[:max_samples]
         print(f"Limiting to {max_samples} samples")
 
     os.makedirs(out_dir, exist_ok=True)
@@ -436,7 +514,7 @@ def main(metadata, model_dir, planning_steps, out_dir, horizon, sim_path,
 
     # Process samples in batches of 25
     batch_size = 25
-    total_samples = len(test_samples)
+    total_samples = len(samples)
     num_batches = (total_samples + batch_size - 1) // batch_size
 
     overall_start_time = time.time()
@@ -444,7 +522,7 @@ def main(metadata, model_dir, planning_steps, out_dir, horizon, sim_path,
     for batch_idx in range(num_batches):
         batch_start = batch_idx * batch_size
         batch_end = min(batch_start + batch_size, total_samples)
-        batch_samples = test_samples[batch_start:batch_end]
+        batch_samples = samples[batch_start:batch_end]
 
         print(f"\n{'#'*80}")
         print(f"BATCH {batch_idx+1}/{num_batches}: Samples {batch_start+1}-{batch_end}/{total_samples}")
@@ -470,11 +548,18 @@ def main(metadata, model_dir, planning_steps, out_dir, horizon, sim_path,
                 print(f"    Target: {sample['target_position']}, Distance: {sample['target_distance']:.4f}m")
 
                 try:
+                    # Set up image directory if saving images
+                    image_dir = None
+                    if save_images:
+                        image_dir = Path(out_dir) / model_config.name / f"sample_{sample_idx}"
+
                     result = evaluate_sample(
                         sample, sim, ee_sid, encoder, predictor, transform,
                         world_model, tokens_per_frame, planning_steps,
                         horizon, step_dt, device,
-                        action_transform=model_config.action_transform
+                        action_transform=model_config.action_transform,
+                        save_images=save_images,
+                        image_dir=str(image_dir) if image_dir else None
                     )
                     result['sample_idx'] = sample_idx
                     result['trajectory_index'] = sample['trajectory_index']
@@ -520,7 +605,7 @@ def main(metadata, model_dir, planning_steps, out_dir, horizon, sim_path,
     print(f"EVALUATION COMPLETE")
     print(f"{'='*80}")
 
-    for model_name in loaded_models.keys():
+    for model_name in all_results.keys():
         n_samples = len(all_results[model_name])
         if n_samples > 0:
             mean_dist = model_stats[model_name]['total_distance'] / n_samples

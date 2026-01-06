@@ -19,10 +19,20 @@
 
     <worldbody>
 
+        <!-- Original cameras -->
         <camera name='left_cam' pos='-0.691 0.147 1.121' xyaxes='0.231 -0.973 -0.000 0.050 0.012 0.999'/>
-        <camera name='left_cam_2' pos='-0.691 0.147 1.321' xyaxes='0.231 -0.973 -0.000 0.15 0.04 0.988'/>
-        <camera name='right_cam' pos='1.2 -0.5 1.8' quat='0.76 0.5 0.21 0.35'/>
-        <camera name='top_cam' pos='0 0.5 2.2' euler='0 0 0'/>
+
+        <!-- New parameterized cameras for camera sensitivity experiments -->
+        <!-- All cameras look at workspace center (0, 0.475, 1.0) -->
+        <!-- Naming: {position}_{elevation} where position is azimuth direction -->
+        <camera name='front_cam' pos='0.869 0.475 1.233' xyaxes='0.000 1.000 -0.000 -0.259 0.000 0.966'/>
+        <camera name='right_cam' pos='-0.000 -0.394 1.233' xyaxes='1.000 -0.000 0.000 0.000 0.259 0.966'/>
+        <camera name='back_cam' pos='-0.869 0.475 1.233' xyaxes='-0.000 -1.000 0.000 0.259 -0.000 0.966'/>
+        <camera name='top_cam' pos='0.000 0.614 1.788' xyaxes='-1.000 0.000 0.000 -0.000 -0.985 0.174'/>
+        <camera name='front_right_cam' pos='0.577 -0.102 1.380' xyaxes='0.707 0.707 -0.000 -0.299 0.299 0.906'/>
+        <camera name='back_left_cam' pos='-0.577 1.052 1.380' xyaxes='-0.707 -0.707 0.000 0.299 -0.299 0.906'/>
+        <camera name='left_high_cam' pos='-0.218 1.073 1.636' xyaxes='-0.940 -0.342 0.000 0.242 -0.664 0.707'/>
+        <camera name='left_low_cam' pos='-0.308 1.321 1.000' xyaxes='-0.940 -0.342 0.000 0.000 0.000 1.000'/>
 
         <site name='workspace' type='box' size='.6 .375 .25' pos='0 0.475 1.0' group='3' rgba='0 0 .4 .2'/>
 

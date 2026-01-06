@@ -12,7 +12,7 @@ PLOT_PARAMS = {
     "figsize_with_images": (10, 14),
     "figsize_plots_only": (12, 10),
     "title_size": 28,
-    "subtitle_size": 28,
+    "subtitle_size": 20,
     "label_size": 20,
     "legend_size": 12,
     "grid_alpha": 0.3,

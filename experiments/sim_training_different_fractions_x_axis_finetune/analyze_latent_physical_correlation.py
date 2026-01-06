@@ -28,26 +28,15 @@ sys.path.insert(0, "/home/s185927/thesis/vjepa2")
 sys.path.insert(0, "/home/s185927/thesis")
 
 from app.vjepa_droid.utils import init_video_model
+from app.vjepa_droid.transforms import make_transforms
 from plot_config import PLOT_PARAMS, configure_axis
 
 
-# Model configurations
+# Model configuration (single encoder - finetuning only affects predictor, not encoder)
 MODELS = {
-    "Pretrained": {
+    "V-JEPA 2 Encoder": {
         "checkpoint": "/home/s185927/.cache/torch/hub/checkpoints/vjepa2-ac-vitg.pt",
         "config": "/home/s185927/thesis/vjepa2/configs/train/vitg16/x_axis_finetune/x_axis_finetune_025pct.yaml",
-    },
-    "25% Finetuned": {
-        "checkpoint": "/data/s185927/vjepa2/weights/droid/x_axis_finetune_025pct/best.pt",
-        "config": "/home/s185927/thesis/vjepa2/configs/train/vitg16/x_axis_finetune/x_axis_finetune_025pct.yaml",
-    },
-    "50% Finetuned": {
-        "checkpoint": "/data/s185927/vjepa2/weights/droid/x_axis_finetune_050pct/best.pt",
-        "config": "/home/s185927/thesis/vjepa2/configs/train/vitg16/x_axis_finetune/x_axis_finetune_050pct.yaml",
-    },
-    "75% Finetuned": {
-        "checkpoint": "/data/s185927/vjepa2/weights/droid/x_axis_finetune_075pct/best.pt",
-        "config": "/home/s185927/thesis/vjepa2/configs/train/vitg16/x_axis_finetune/x_axis_finetune_075pct.yaml",
     },
 }
 
@@ -111,13 +100,19 @@ def load_model(checkpoint_path, config, device='cuda:0'):
 
     # Load checkpoint
     checkpoint = torch.load(checkpoint_path, map_location=device)
-    encoder.load_state_dict(checkpoint['encoder'], strict=False)
+
+    # Strip 'module.' prefix if present (Meta checkpoints have this prefix)
+    encoder_dict = checkpoint['encoder']
+    encoder_dict = {k.replace("module.", ""): v for k, v in encoder_dict.items()}
+    encoder.load_state_dict(encoder_dict, strict=False)
 
     # Load target encoder if available
     import copy
     target_encoder = copy.deepcopy(encoder)
     if 'target_encoder' in checkpoint:
-        target_encoder.load_state_dict(checkpoint['target_encoder'], strict=False)
+        target_encoder_dict = checkpoint['target_encoder']
+        target_encoder_dict = {k.replace("module.", ""): v for k, v in target_encoder_dict.items()}
+        target_encoder.load_state_dict(target_encoder_dict, strict=False)
 
     encoder.eval()
     target_encoder.eval()
@@ -125,59 +120,96 @@ def load_model(checkpoint_path, config, device='cuda:0'):
     return encoder, target_encoder, device
 
 
-def preprocess_frame(frame, crop_size=256):
-    """Preprocess a single frame for model input."""
-    # Resize to crop_size maintaining aspect ratio
-    img = Image.fromarray(frame)
-
-    # Center crop
-    width, height = img.size
-    new_width, new_height = crop_size, crop_size
-    left = (width - new_width) / 2
-    top = (height - new_height) / 2
-    right = (width + new_width) / 2
-    bottom = (height + new_height) / 2
-    img = img.crop((left, top, right, bottom))
-
-    # Convert to tensor and normalize
-    img_array = np.array(img, dtype=np.float32) / 255.0
-
-    # Normalize with ImageNet stats
-    mean = np.array([0.485, 0.456, 0.406])
-    std = np.array([0.229, 0.224, 0.225])
-    img_array = (img_array - mean) / std
-
-    return img_array
+def create_transform(crop_size=256):
+    """Create the same transform used in robo_samples.py for inference."""
+    return make_transforms(
+        random_horizontal_flip=False,
+        random_resize_aspect_ratio=(1., 1.),
+        random_resize_scale=(1., 1.),
+        reprob=0.,
+        auto_augment=False,
+        motion_shift=False,
+        crop_size=crop_size,
+    )
 
 
-def encode_frame(encoder, frame, device, crop_size=256, patch_size=16, normalize=True):
-    """Encode a single frame using the encoder."""
-    # Preprocess
-    img = preprocess_frame(frame, crop_size)
+def encode_frames_together(encoder, current_frame, goal_frame, transform, device, tokens_per_frame, normalize=True):
+    """
+    Encode current and goal frames together as a 2-frame video.
+    This matches the approach used in robo_samples.py.
 
-    # Convert to tensor: (C, H, W)
-    img_tensor = torch.from_numpy(img).permute(2, 0, 1).float()
+    Args:
+        encoder: The encoder model
+        current_frame: Current frame as numpy array (H, W, C)
+        goal_frame: Goal frame as numpy array (H, W, C)
+        transform: Transform to apply to frames
+        device: Device to use
+        tokens_per_frame: Number of tokens per frame
+        normalize: Whether to apply layer normalization
 
-    # Add batch and temporal dimensions: (B, C, T, H, W)
-    # For single frame, we repeat it twice as required by the model
-    img_tensor = img_tensor.unsqueeze(0).unsqueeze(2).repeat(1, 1, 2, 1, 1)
-    img_tensor = img_tensor.to(device)
+    Returns:
+        z_current: Current frame representation (tokens_per_frame, D)
+        z_goal: Goal frame representation (tokens_per_frame, D)
+    """
+    # Stack frames as [2, H, W, C] - this is what the transform expects
+    combined_rgb = np.stack([current_frame, goal_frame], axis=0)
+
+    # Apply transform: outputs [C, 2, H, W], then unsqueeze to [1, C, 2, H, W]
+    clips = transform(combined_rgb).unsqueeze(0).to(device)
+
+    B, C, T, H, W = clips.size()
 
     with torch.no_grad():
-        # Encode
-        h = encoder(img_tensor)
+        # Permute to [B*T, C, H, W] = [2, C, H, W]
+        c = clips.permute(0, 2, 1, 3, 4).flatten(0, 1)
 
-        # h shape: (B, num_patches, embed_dim)
-        # For our single frame: (1, num_patches, embed_dim)
+        # Model expects tubelet_size=2, so repeat to get [2, C, 2, H, W]
+        c = c.unsqueeze(2).repeat(1, 1, 2, 1, 1)
 
-        # Normalize if requested
+        # Encode: output shape [2, num_tokens, D]
+        h = encoder(c)
+
+        # Reshape back to [B, T, num_tokens, D] then flatten to [B, T*num_tokens, D]
+        h = h.view(B, T, -1, h.size(-1)).flatten(1, 2)  # [1, 2*num_tokens, D]
+
         if normalize:
             h = F.layer_norm(h, (h.size(-1),))
 
-        # Average pool over patches to get single vector per frame
-        h = h.mean(dim=1)  # (1, embed_dim)
+        # Split into current and goal representations
+        z_current = h[:, :tokens_per_frame].contiguous().squeeze(0)  # [num_tokens, D]
+        z_goal = h[:, -tokens_per_frame:].contiguous().squeeze(0)    # [num_tokens, D]
 
-    return h.squeeze(0)  # (embed_dim,)
+    return z_current, z_goal
+
+
+def encode_single_frame(encoder, frame, transform, device, normalize=True):
+    """
+    Encode a single frame by duplicating it to create a 2-frame video.
+    Used when we only have one frame to encode.
+    """
+    # Duplicate frame to create 2-frame video
+    combined_rgb = np.stack([frame, frame], axis=0)  # [2, H, W, C]
+
+    # Apply transform
+    clips = transform(combined_rgb).unsqueeze(0).to(device)  # [1, C, 2, H, W]
+
+    B, C, T, H, W = clips.size()
+
+    with torch.no_grad():
+        c = clips.permute(0, 2, 1, 3, 4).flatten(0, 1)  # [2, C, H, W]
+        c = c.unsqueeze(2).repeat(1, 1, 2, 1, 1)  # [2, C, 2, H, W]
+        h = encoder(c)  # [2, num_tokens, D]
+
+        # Just take the first frame's representation
+        h = h[0]  # [num_tokens, D]
+
+        if normalize:
+            h = F.layer_norm(h, (h.size(-1),))
+
+        # Average pool over tokens
+        h = h.mean(dim=0)  # [D]
+
+    return h
 
 
 def load_trajectory_data(episode_path):
@@ -238,8 +270,9 @@ def analyze_trajectory_correlation(
     encoder,
     trajectory_data,
     device,
+    transform,
+    tokens_per_frame,
     crop_size=256,
-    patch_size=16,
 ):
     """
     Analyze correlation between Euclidean distance and latent distance for a single trajectory.
@@ -255,9 +288,6 @@ def analyze_trajectory_correlation(
     goal_frame = frames[-1]
     goal_pos = ee_pos[-1]
 
-    # Encode goal
-    goal_repr = encode_frame(encoder, goal_frame, device, crop_size, patch_size)
-
     euclidean_dist_list = []
     latent_dist_list = []
 
@@ -269,11 +299,13 @@ def analyze_trajectory_correlation(
         # Compute Euclidean distance (3D distance in xyz space)
         euclidean_dist = np.linalg.norm(goal_pos - pos)
 
-        # Encode frame
-        frame_repr = encode_frame(encoder, frame, device, crop_size, patch_size)
+        # Encode current frame and goal frame together (proper approach from robo_samples.py)
+        z_current, z_goal = encode_frames_together(
+            encoder, frame, goal_frame, transform, device, tokens_per_frame
+        )
 
-        # Compute latent L1 distance
-        latent_dist = torch.abs(frame_repr - goal_repr).sum().item()
+        # Compute latent L1 distance (mean over all elements, matching energy landscape computation)
+        latent_dist = torch.abs(z_current - z_goal).mean().item()
 
         euclidean_dist_list.append(euclidean_dist)
         latent_dist_list.append(latent_dist)
@@ -295,6 +327,20 @@ def analyze_model(model_name, model_info, test_episodes, device, max_trajectorie
     encoder, target_encoder, device = load_model(model_info['checkpoint'], config, device)
     encoder = target_encoder  # Use target encoder for consistency
 
+    # Verify checkpoint was loaded correctly (debug logging)
+    param_sum = sum(p.sum().item() for p in encoder.parameters())
+    print(f"  Checkpoint: {model_info['checkpoint']}")
+    print(f"  Encoder param checksum: {param_sum:.2f}")
+
+    # Create transform (using proper make_transforms)
+    crop_size = config['data']['crop_size']
+    patch_size = config['data']['patch_size']
+    transform = create_transform(crop_size=crop_size)
+
+    # Calculate tokens per frame
+    tokens_per_frame = (crop_size // patch_size) ** 2
+    print(f"  Tokens per frame: {tokens_per_frame}")
+
     # Collect all data points
     all_euclidean_dist = []
     all_latent_dist = []
@@ -308,13 +354,16 @@ def analyze_model(model_name, model_info, test_episodes, device, max_trajectorie
                 encoder,
                 trajectory_data,
                 device,
-                crop_size=config['data']['crop_size'],
-                patch_size=config['data']['patch_size'],
+                transform=transform,
+                tokens_per_frame=tokens_per_frame,
+                crop_size=crop_size,
             )
             all_euclidean_dist.extend(euclidean_dist_list)
             all_latent_dist.extend(latent_dist_list)
         except Exception as e:
             print(f"  Warning: Failed to process {episode_path}: {e}")
+            import traceback
+            traceback.print_exc()
             continue
 
     # Compute correlation
@@ -339,8 +388,8 @@ def main():
     parser.add_argument(
         '--test_csv',
         type=str,
-        default='/data/s185927/droid_sim/axis_aligned/x/splits/val_trajectories.csv',
-        help='Path to test/validation trajectories CSV',
+        default='/data/s185927/droid_sim/axis_aligned/test_trajectories.csv',
+        help='Path to test trajectories CSV',
     )
     parser.add_argument(
         '--device',
@@ -424,7 +473,7 @@ def main():
         configure_axis(
             ax,
             xlabel='Euclidean Distance to Goal (m)',
-            ylabel='Latent L1 Distance to Goal',
+            ylabel='Mean L1 Distance to Goal',
             title=f'{model_name}\nr = {data["correlation"]:.4f}'
         )
 

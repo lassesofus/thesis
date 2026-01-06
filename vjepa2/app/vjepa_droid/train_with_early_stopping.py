@@ -21,6 +21,7 @@ import numpy as np
 import torch
 import torch.multiprocessing as mp
 import torch.nn.functional as F
+import wandb
 from torch.nn.parallel import DistributedDataParallel
 
 # Suppress noisy warnings
@@ -197,6 +198,17 @@ def main_with_early_stopping(args, resume_preempt=False):
     # -- log/checkpointing paths
     # Create output folder if it doesn't exist
     os.makedirs(folder, exist_ok=True)
+
+    # -- Initialize wandb (only on main process)
+    run_name = Path(folder).name  # e.g., "4.8.vitg16-256px-8f_025pct"
+    if rank == 0:
+        wandb.init(
+            project=os.environ.get("WANDB_PROJECT", "vjepa2-training"),
+            entity=os.environ.get("WANDB_ENTITY", None),
+            name=run_name,
+            config=args,
+            resume="allow",
+        )
 
     log_file = os.path.join(folder, f"log_r{rank}.csv")
     latest_path = os.path.join(folder, "latest.pt")
@@ -687,6 +699,21 @@ def main_with_early_stopping(args, resume_preempt=False):
                             data_elapsed_time_meter.avg,
                         )
                     )
+                    # Log to wandb
+                    if rank == 0:
+                        wandb.log({
+                            "train/loss": loss,
+                            "train/jloss": jloss,
+                            "train/sloss": sloss,
+                            "train/loss_avg": loss_meter.avg,
+                            "train/lr": _new_lr,
+                            "train/weight_decay": _new_wd,
+                            "timing/iter_ms": iter_elapsed_time_ms,
+                            "timing/gpu_ms": gpu_etime_ms,
+                            "timing/data_ms": data_elapsed_time_ms,
+                            "epoch": epoch + 1,
+                            "iteration": itr,
+                        })
 
             log_stats()
             assert not np.isnan(loss), "loss is nan"
@@ -709,6 +736,16 @@ def main_with_early_stopping(args, resume_preempt=False):
             logger.info(f"Validation: loss={val_loss:.4f} [jloss={val_jloss:.4f}, sloss={val_sloss:.4f}]")
             val_csv_logger.log(epoch + 1, val_loss, val_jloss, val_sloss)
 
+            # Log validation metrics to wandb
+            if rank == 0:
+                wandb.log({
+                    "val/loss": val_loss,
+                    "val/jloss": val_jloss,
+                    "val/sloss": val_sloss,
+                    "val/best_loss": best_val_loss,
+                    "epoch": epoch + 1,
+                })
+
             # Check if validation improved
             if val_loss < (best_val_loss - min_delta):
                 logger.info(f"★ Validation improved: {best_val_loss:.4f} → {val_loss:.4f}")
@@ -725,6 +762,10 @@ def main_with_early_stopping(args, resume_preempt=False):
                     logger.info(f"Best validation loss: {best_val_loss:.4f} at epoch {epoch + 1 - epochs_without_improvement}")
                     logger.info(f"Best model saved to: {best_path}")
                     break
+
+    # Finish wandb run
+    if rank == 0:
+        wandb.finish()
 
     logger.info("Training complete!")
     if epochs_without_improvement < early_stopping_patience:

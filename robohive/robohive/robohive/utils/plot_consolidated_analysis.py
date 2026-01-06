@@ -8,29 +8,33 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import click
 import os
+import sys
 import glob
 from PIL import Image
 
-# Central plotting configuration (matching plot_distance_analysis.py)
-PLOT_PARAMS = {
-    "figsize": (30, 15),  # Reduced height for tighter layout
-    "title_size": 26,
-    "subtitle_size": 22,
-    "label_size": 20,
-    "legend_size": 16,
-    "grid_alpha": 0.3,
-    "euclid_linewidth": 2.5,
-    "euclid_markersize": 7,
-    "euclid_capsize": 4,
-    "repr_linewidth": 2.5,
-    "repr_markersize": 7,
-    "repr_capsize": 4,
-    "threshold_linewidth": 2.5,
-    "tick_label_size": 18,
-    "tick_length": 5,
-    "y_tick_step": 0.05,
+# Import shared plotting configuration
+sys.path.insert(0, '/home/s185927/thesis')
+from plot_config import PLOT_PARAMS, apply_plot_params
+
+# Additional parameters specific to this plot (scaled up for larger figure)
+PLOT_PARAMS_LOCAL = {
+    "figsize": (30, 15),
     "panel_label_size": 24,
-    "step_label_size": 26,
+    "step_label_size": 32,
+    # Scaled font sizes for larger figure (30x15 vs 14x8)
+    "label_size": 28,
+    "legend_size": 20,
+    "tick_label_size": 18,
+    # Scaled line widths for larger figure
+    "euclid_linewidth": 3.0,
+    "euclid_markersize": 8,
+    "euclid_capsize": 5,
+    "repr_linewidth": 3.0,
+    "repr_markersize": 8,
+    "repr_capsize": 5,
+    "threshold_linewidth": 3,
+    # Match left_cam color from camera_comparison plot
+    "line_color": '#1f77b4',
 }
 
 # Planning steps to show (excluding step00 which is the start frame)
@@ -41,9 +45,9 @@ PANEL_LABELS = ['(a)', '(b)', '(c)']
 
 DIRECTIONS = ['x', 'y', 'z']
 DIRECTION_LABELS = {
-    'x': 'Reach Along X',
-    'y': 'Reach Along Y',
-    'z': 'Reach Along Z',
+    'x': 'Reach along x',
+    'y': 'Reach along y',
+    'z': 'Reach along z',
 }
 
 
@@ -210,12 +214,12 @@ def main(out_dir, episode, threshold):
             all_repr_max = max(all_repr_max, rmax)
 
     # Create figure with GridSpec
-    fig = plt.figure(figsize=PLOT_PARAMS["figsize"])
+    fig = plt.figure(figsize=PLOT_PARAMS_LOCAL["figsize"])
 
     # Use a 3-row outer layout: images (rows 0-1 combined), L2 plot, L1 plot
     # The first row will contain both Start/Goal and Planning sequence with tight spacing
     outer_gs = gridspec.GridSpec(3, 3, figure=fig, height_ratios=[2.7, 1.3, 1.3],
-                                  hspace=0.3, wspace=0.15, top=0.92, bottom=0.06)
+                                  hspace=0.15, wspace=0.15, top=0.92, bottom=0.06)
 
     for col_idx, direction in enumerate(DIRECTIONS):
         data = all_data[direction]
@@ -231,22 +235,22 @@ def main(out_dir, episode, threshold):
         ax_start = fig.add_subplot(inner_gs[0, 0])
         if data['start_img'] is not None:
             ax_start.imshow(data['start_img'])
-        ax_start.set_title('$x_0$', fontsize=PLOT_PARAMS["step_label_size"])
+        ax_start.set_title('$x_0$', fontsize=PLOT_PARAMS_LOCAL["step_label_size"])
         ax_start.axis('off')
 
         # Goal image
         ax_goal = fig.add_subplot(inner_gs[0, 1])
         if data['goal_img'] is not None:
             ax_goal.imshow(data['goal_img'])
-        ax_goal.set_title('$x_g$', fontsize=PLOT_PARAMS["step_label_size"])
+        ax_goal.set_title('$x_g$', fontsize=PLOT_PARAMS_LOCAL["step_label_size"])
         ax_goal.axis('off')
 
         # Add direction title with panel label above the image row
         # Calculate center x position for this column
         col_center = (inner_gs[0, 0].get_position(fig).x0 + inner_gs[0, 1].get_position(fig).x1) / 2
         panel_title = f'{PANEL_LABELS[col_idx]} {DIRECTION_LABELS[direction]}'
-        fig.text(col_center, 0.96, panel_title, fontsize=PLOT_PARAMS["title_size"],
-                 ha='center', va='bottom', fontweight='bold')
+        fig.text(col_center, 0.96, panel_title, fontsize=36,
+                 ha='center', va='bottom')
 
         # Planning sequence row (steps 1-5)
         n_steps = len(PLANNING_STEPS)
@@ -255,7 +259,7 @@ def main(out_dir, episode, threshold):
             ax_step = fig.add_subplot(planning_gs[0, step_idx])
             if data['planning_imgs'] and step_idx < len(data['planning_imgs']) and data['planning_imgs'][step_idx] is not None:
                 ax_step.imshow(data['planning_imgs'][step_idx])
-            ax_step.set_title(f'$x_{step_num}$', fontsize=PLOT_PARAMS["step_label_size"])
+            ax_step.set_title(f'$x_{step_num}$', fontsize=PLOT_PARAMS_LOCAL["step_label_size"])
             ax_step.set_xticks([])
             ax_step.set_yticks([])
             for spine in ax_step.spines.values():
@@ -268,10 +272,11 @@ def main(out_dir, episode, threshold):
             stat_steps,
             data['dist_mean'],
             yerr=data['dist_std'],
-            fmt='k-o',
-            linewidth=PLOT_PARAMS["euclid_linewidth"],
-            markersize=PLOT_PARAMS["euclid_markersize"],
-            capsize=PLOT_PARAMS["euclid_capsize"],
+            fmt='-o',
+            color=PLOT_PARAMS_LOCAL["line_color"],
+            linewidth=PLOT_PARAMS_LOCAL["euclid_linewidth"],
+            markersize=PLOT_PARAMS_LOCAL["euclid_markersize"],
+            capsize=PLOT_PARAMS_LOCAL["euclid_capsize"],
             alpha=0.9,
             label=f'Mean ± std (N={data["dist_n"]})',
         )
@@ -279,13 +284,12 @@ def main(out_dir, episode, threshold):
             y=threshold,
             color='r',
             linestyle='--',
-            linewidth=PLOT_PARAMS["threshold_linewidth"],
+            linewidth=PLOT_PARAMS_LOCAL["threshold_linewidth"],
             label=f'Threshold ({threshold}m)',
         )
         if col_idx == 0:
-            ax_euclidean.set_ylabel('(m)', fontsize=PLOT_PARAMS["label_size"])
-            ax_euclidean.legend(fontsize=PLOT_PARAMS["legend_size"], loc='best')
-        ax_euclidean.set_title(r'$\Vert p_k - p_g \Vert_2$', fontsize=PLOT_PARAMS["title_size"])
+            ax_euclidean.set_ylabel(r'$\|p_k - p_g\|_2$ (m)', fontsize=PLOT_PARAMS_LOCAL["label_size"])
+            ax_euclidean.legend(fontsize=PLOT_PARAMS_LOCAL["legend_size"], loc='best')
         ax_euclidean.grid(True, alpha=PLOT_PARAMS["grid_alpha"])
         ax_euclidean.set_xticks(stat_steps)
 
@@ -295,7 +299,7 @@ def main(out_dir, episode, threshold):
         y_ticks = np.arange(0.0, all_dist_max + y_step * 0.5, y_step)
         ax_euclidean.set_yticks(y_ticks)
         ax_euclidean.set_yticklabels([f'{y:.2f}' for y in y_ticks])
-        ax_euclidean.tick_params(axis='both', labelsize=PLOT_PARAMS["tick_label_size"], length=PLOT_PARAMS["tick_length"])
+        ax_euclidean.tick_params(axis='both', labelsize=PLOT_PARAMS_LOCAL["tick_label_size"], length=PLOT_PARAMS["tick_length"])
 
         # L1 Representation plot
         ax_repr = fig.add_subplot(outer_gs[2, col_idx])
@@ -305,31 +309,34 @@ def main(out_dir, episode, threshold):
                 stat_repr_steps,
                 data['repr_mean'],
                 yerr=data['repr_std'],
-                fmt='k-s',
-                linewidth=PLOT_PARAMS["repr_linewidth"],
-                markersize=PLOT_PARAMS["repr_markersize"],
-                capsize=PLOT_PARAMS["repr_capsize"],
+                fmt='-s',
+                color=PLOT_PARAMS_LOCAL["line_color"],
+                linewidth=PLOT_PARAMS_LOCAL["repr_linewidth"],
+                markersize=PLOT_PARAMS_LOCAL["repr_markersize"],
+                capsize=PLOT_PARAMS_LOCAL["repr_capsize"],
                 alpha=0.9,
                 label=f'Mean ± std (N={data["repr_n"]})',
             )
-            ax_repr.set_xlabel('Step', fontsize=PLOT_PARAMS["label_size"])
+            ax_repr.set_xlabel('Step (k)', fontsize=PLOT_PARAMS_LOCAL["label_size"])
             if col_idx == 0:
-                #ax_repr.set_ylabel('L1 Distance', fontsize=PLOT_PARAMS["label_size"])
-                ax_repr.legend(fontsize=PLOT_PARAMS["legend_size"])
-            ax_repr.set_title(r'$\Vert z_k - z_g \Vert_1$', fontsize=PLOT_PARAMS["title_size"])
+                ax_repr.set_ylabel(r'$\|z_k - z_g\|_1$', fontsize=PLOT_PARAMS_LOCAL["label_size"])
+                ax_repr.legend(fontsize=PLOT_PARAMS_LOCAL["legend_size"])
             ax_repr.grid(True, alpha=PLOT_PARAMS["grid_alpha"])
             ax_repr.set_xticks(stat_repr_steps)
 
             # Shared y-axis limits for representation with consistent decimal formatting
             margin = 0.05 * abs(all_repr_max - all_repr_min)
-            ax_repr.set_ylim(all_repr_min - margin, all_repr_max + margin)
-            # Format y-tick labels with consistent decimals
-            ax_repr.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f'{x:.2f}'))
+            y_min_repr = all_repr_min - margin
+            y_max_repr = all_repr_max + margin
+            ax_repr.set_ylim(y_min_repr, y_max_repr)
+            # Set y-ticks with 0.05 increments
+            y_ticks_repr = np.arange(np.floor(y_min_repr / 0.05) * 0.05, y_max_repr + 0.025, 0.05)
+            ax_repr.set_yticks(y_ticks_repr)
+            ax_repr.set_yticklabels([f'{y:.2f}' for y in y_ticks_repr])
         else:
             ax_repr.text(0.5, 0.5, 'No repr data', ha='center', va='center', transform=ax_repr.transAxes)
-            ax_repr.set_title(r'$\Vert z_k - z_g \Vert_1$', fontsize=PLOT_PARAMS["title_size"])
 
-        ax_repr.tick_params(axis='both', labelsize=PLOT_PARAMS["tick_label_size"], length=PLOT_PARAMS["tick_length"])
+        ax_repr.tick_params(axis='both', labelsize=PLOT_PARAMS_LOCAL["tick_label_size"], length=PLOT_PARAMS["tick_length"])
 
     # Save figure
     output_path = os.path.join(out_dir, 'consolidated_analysis.png')

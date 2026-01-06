@@ -139,7 +139,7 @@ def main():
     parser.add_argument(
         "--splits_dir",
         type=str,
-        default="/data/s185927/droid_sim/axis_aligned/x/splits",
+        default="/data/s185927/droid_sim/axis_aligned/splits",
         help="Directory containing data split CSVs",
     )
     parser.add_argument(

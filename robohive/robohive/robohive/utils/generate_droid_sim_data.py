@@ -75,6 +75,12 @@ except ImportError:
     skvideo = None
     print("Warning: skvideo not available. Install with: pip install scikit-video")
 
+try:
+    from decord import VideoReader, cpu as decord_cpu
+except ImportError:
+    VideoReader = None
+    print("Warning: decord not available. Frame count verification will be skipped.")
+
 # Robot configuration
 ARM_nJnt = 7
 EE_SITE = "end_effector"
@@ -449,9 +455,30 @@ def save_trajectory(traj_dir, data, camera_name, fps=30):
         return False
 
     frames_array = np.array(data['frames'], dtype=np.uint8)
-    outputdict = {"-pix_fmt": "yuv420p", "-r": str(fps)}
-    skvideo.io.vwrite(str(mp4_path), frames_array, outputdict=outputdict)
+    # Use encoding options that prevent frame count mismatch:
+    # inputdict -r: Specify input frame rate (CRITICAL for correct frame count)
+    # -g 1: GOP size 1 (keyframe every frame, no B-frame dependencies)
+    # -bf 0: Disable B-frames explicitly
+    inputdict = {"-r": str(fps)}
+    outputdict = {
+        "-pix_fmt": "yuv420p",
+        "-r": str(fps),
+        "-g": "1",
+        "-bf": "0"
+    }
+    skvideo.io.vwrite(str(mp4_path), frames_array, inputdict=inputdict, outputdict=outputdict)
     print(f"  Saved video: {mp4_path} ({frames_array.shape})")
+
+    # Verify frame count matches expected
+    if VideoReader is not None:
+        vr = VideoReader(str(mp4_path), ctx=decord_cpu(0))
+        actual_frames = len(vr)
+        expected_frames = len(frames_array)
+        if actual_frames != expected_frames:
+            print(f"  WARNING: Video frame count mismatch! Expected {expected_frames}, got {actual_frames}")
+            print(f"           This may cause data misalignment during training.")
+        else:
+            print(f"  Verified video frame count: {actual_frames}")
 
     # 2. Save trajectory.h5
     h5_path = traj_path / "trajectory.h5"

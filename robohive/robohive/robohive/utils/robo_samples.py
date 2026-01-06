@@ -88,6 +88,40 @@ def robohive_to_droid_pos(pos_robohive):
     return np.array([pos_robohive[1], pos_robohive[0], pos_robohive[2]])
 
 
+def transform_pose_to_droid_frame(pose):
+    """
+    Transform pose from RoboHive coordinate frame to DROID coordinate frame.
+
+    This is the same transformation used in generate_droid_sim_data.py when saving
+    training data. It must be applied to the current EE pose before passing to the
+    model during evaluation, since the model was trained on DROID-frame data.
+
+    Transformation (RoboHive → DROID):
+        DROID_x = RoboHive_y
+        DROID_y = -RoboHive_x
+        DROID_z = RoboHive_z
+
+    Args:
+        pose: [x, y, z, roll, pitch, yaw] in RoboHive frame
+
+    Returns:
+        transformed_pose: [x, y, z, roll, pitch, yaw] in DROID frame
+    """
+    transformed = pose.copy()
+
+    # Transform position: DROID_x = RoboHive_y, DROID_y = -RoboHive_x
+    transformed[0] = pose[1]    # DROID_x = RoboHive_y
+    transformed[1] = -pose[0]   # DROID_y = -RoboHive_x
+    transformed[2] = pose[2]    # DROID_z = RoboHive_z
+
+    # Transform orientation: swap roll/pitch and negate new pitch
+    transformed[3] = pose[4]    # new_roll = old_pitch
+    transformed[4] = -pose[3]   # new_pitch = -old_roll
+    transformed[5] = pose[5]    # new_yaw = old_yaw
+
+    return transformed
+
+
 def compute_new_pose(current_pos, delta_pos, delta_rpy):
     """
     Compute new end-effector pose given current position and deltas.
@@ -225,6 +259,188 @@ def forward_target(c, normalize_reps=True):
     return h
 
 
+def compute_energy_landscape(
+    encoder, predictor, tokens_per_frame,
+    current_rep, current_state, goal_rep,
+    experiment_type='z', nsamples=9, grid_size=0.075,
+    normalize_reps=True, device='cuda'
+):
+    """
+    Compute energy landscape for visualization.
+
+    Args:
+        encoder: V-JEPA encoder model
+        predictor: V-JEPA predictor model
+        tokens_per_frame: Number of tokens per frame
+        current_rep: Current frame representation [1, tokens, D]
+        current_state: Current robot state [1, 1, 7]
+        goal_rep: Goal frame representation [1, tokens, D]
+        experiment_type: 'x', 'y', or 'z' - determines which axis to fix
+        nsamples: Grid resolution per axis
+        grid_size: Range of action sampling in meters
+        normalize_reps: Whether to layer-normalize representations
+        device: Torch device
+
+    Returns:
+        heatmap: 2D numpy array of energy values
+        axis1_edges: Bin edges for axis 1
+        axis2_edges: Bin edges for axis 2
+        axis1_label: Label for axis 1 (e.g., "Delta Y")
+        axis2_label: Label for axis 2 (e.g., "Delta Z")
+    """
+    # Determine which axes to vary based on experiment_type
+    # We include the planning axis in the visualization
+    if experiment_type == 'x':
+        # Planning along X: show X-Y plane (fix Z)
+        vary_axes = (0, 1)  # (X, Y)
+        axis1_label, axis2_label = "Delta X (m)", "Delta Y (m)"
+    elif experiment_type == 'y':
+        # Planning along Y: show X-Y plane (fix Z)
+        vary_axes = (0, 1)  # (X, Y)
+        axis1_label, axis2_label = "Delta X (m)", "Delta Y (m)"
+    else:  # 'z'
+        # Planning along Z: show X-Z plane (fix Y)
+        vary_axes = (0, 2)  # (X, Z)
+        axis1_label, axis2_label = "Delta X (m)", "Delta Z (m)"
+
+    # Create 2D action grid (fix third axis at 0)
+    action_samples = []
+    for d1 in np.linspace(-grid_size, grid_size, nsamples):
+        for d2 in np.linspace(-grid_size, grid_size, nsamples):
+            action = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]  # [dx,dy,dz,droll,dpitch,dyaw,grip]
+            action[vary_axes[0]] = d1
+            action[vary_axes[1]] = d2
+            action_samples.append(torch.tensor(action, device=device, dtype=current_rep.dtype))
+
+    action_samples = torch.stack(action_samples, dim=0).unsqueeze(1)  # [N^2, 1, 7]
+    num_samples = nsamples ** 2
+
+    # Expand representations for batch processing
+    z_batch = current_rep[:, :tokens_per_frame].repeat(num_samples, 1, 1)  # [N^2, tokens, D]
+    s_batch = current_state.repeat(num_samples, 1, 1)  # [N^2, 1, 7]
+
+    # Predict next representations
+    with torch.no_grad():
+        z_pred = predictor(z_batch, action_samples, s_batch)[:, -tokens_per_frame:]
+        if normalize_reps:
+            z_pred = F.layer_norm(z_pred, (z_pred.size(-1),))
+
+    # Compute L1 energy (distance to goal)
+    goal_expanded = goal_rep.repeat(num_samples, 1, 1)  # [N^2, tokens, D]
+    energy = torch.mean(torch.abs(z_pred - goal_expanded), dim=[1, 2])  # [N^2]
+    energy = energy.cpu().numpy()
+
+    # Extract action deltas for the two varied axes
+    actions_np = action_samples[:, 0, :].cpu().numpy()
+    axis1_vals = actions_np[:, vary_axes[0]]
+    axis2_vals = actions_np[:, vary_axes[1]]
+
+    # Create 2D histogram with explicit bin edges to span full ±grid_size range
+    bin_edges = np.linspace(-grid_size, grid_size, nsamples + 1)
+    heatmap, axis1_edges, axis2_edges = np.histogram2d(
+        axis1_vals, axis2_vals, weights=energy, bins=[bin_edges, bin_edges]
+    )
+
+    return heatmap, axis1_edges, axis2_edges, axis1_label, axis2_label
+
+
+def plot_energy_landscape(
+    heatmap, axis1_edges, axis2_edges,
+    axis1_label, axis2_label,
+    save_path, step_idx, distance_to_goal
+):
+    """
+    Create and save energy landscape visualization.
+    """
+    import matplotlib
+    matplotlib.use('Agg')  # Non-interactive backend
+    import matplotlib.pyplot as plt
+
+    fig, ax = plt.subplots(figsize=(6, 5))
+
+    im = ax.imshow(
+        heatmap.T,
+        origin='lower',
+        extent=[axis1_edges[0], axis1_edges[-1], axis2_edges[0], axis2_edges[-1]],
+        cmap='viridis',
+        aspect='auto'
+    )
+
+    ax.set_xlabel(axis1_label)
+    ax.set_ylabel(axis2_label)
+    ax.set_title(f'Energy Landscape (Step {step_idx})\nDist to goal: {distance_to_goal:.4f}m')
+
+    cbar = plt.colorbar(im, ax=ax)
+    cbar.set_label('L1 Energy')
+
+    plt.tight_layout()
+    plt.savefig(save_path, dpi=150, bbox_inches='tight')
+    plt.close(fig)
+
+
+def plot_energy_landscape_3d(
+    heatmap, axis1_edges, axis2_edges,
+    axis1_label, axis2_label,
+    save_path, step_idx, distance_to_goal
+):
+    """
+    Create and save 3D surface plot of energy landscape (like V-JEPA 2 paper Figure 9).
+    """
+    import matplotlib
+    matplotlib.use('Agg')  # Non-interactive backend
+    import matplotlib.pyplot as plt
+    from mpl_toolkits.mplot3d import Axes3D
+    from matplotlib import cm
+
+    # Create meshgrid for surface plot
+    # Use bin centers instead of edges
+    axis1_centers = (axis1_edges[:-1] + axis1_edges[1:]) / 2
+    axis2_centers = (axis2_edges[:-1] + axis2_edges[1:]) / 2
+    X, Y = np.meshgrid(axis1_centers, axis2_centers)
+
+    # Energy values (transpose to match meshgrid orientation)
+    Z = heatmap.T
+
+    # Create figure with 3D axes
+    fig = plt.figure(figsize=(8, 6))
+    ax = fig.add_subplot(111, projection='3d')
+
+    # Create surface plot with colormap
+    surf = ax.plot_surface(
+        X, Y, Z,
+        cmap=cm.coolwarm,
+        linewidth=0.5,
+        antialiased=True,
+        alpha=0.9,
+        edgecolor='gray'
+    )
+
+    # Labels and title
+    ax.set_xlabel(axis1_label, fontsize=10, labelpad=10)
+    ax.set_ylabel(axis2_label, fontsize=10, labelpad=10)
+    ax.set_zlabel('Energy', fontsize=10, labelpad=10)
+    ax.set_title(f'Energy Landscape (Step {step_idx})\nDist to goal: {distance_to_goal:.4f}m', fontsize=12)
+
+    # Adjust view angle for better visualization
+    ax.view_init(elev=25, azim=-60)
+
+    # Add colorbar
+    cbar = fig.colorbar(surf, ax=ax, shrink=0.5, aspect=10, pad=0.1)
+    cbar.set_label('L1 Energy', fontsize=9)
+
+    # Scale axes to be more readable (convert to cm)
+    ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'{x*100:.1f}'))
+    ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'{x*100:.1f}'))
+
+    # Update axis labels to show cm
+    ax.set_xlabel(axis1_label.replace('(m)', '(cm)'), fontsize=10, labelpad=10)
+    ax.set_ylabel(axis2_label.replace('(m)', '(cm)'), fontsize=10, labelpad=10)
+
+    plt.tight_layout()
+    plt.savefig(save_path, dpi=150, bbox_inches='tight')
+    plt.close(fig)
+
+
 def sample_point_in_sphere(center, R):
     """Uniform-in-volume sample inside a sphere centered at center with radius R."""
     u = np.random.rand()
@@ -297,12 +513,17 @@ def sample_point_in_sphere(center, R):
               help='Create side-by-side visualization of current/goal images during planning')
 @click.option('--vjepa_checkpoint', type=str, default=None,
               help='Path to trained V-JEPA checkpoint (.pt file). If not specified, loads Meta baseline from Hub.')
+@click.option('--visualize_energy_landscape', is_flag=True, default=False,
+              help='Generate energy landscape heatmaps during V-JEPA planning steps')
+@click.option('--energy_landscape_3d', is_flag=True, default=False,
+              help='Use 3D surface plots instead of 2D heatmaps for energy landscape')
 
 def main(sim_path, horizon, radius, render, camera_name, out_dir, out_name,
          width, height, device_id, fps, max_episodes, fixed_target,
          fixed_target_offset, experiment_type, num_targets, planning_steps,
          enable_vjepa_planning, save_distance_data, action_transform,
-         save_planning_images, visualize_planning, vjepa_checkpoint):
+         save_planning_images, visualize_planning, vjepa_checkpoint,
+         visualize_energy_landscape, energy_landscape_3d):
 
     sim = SimScene.get_sim(model_handle=sim_path)
     target_sid = sim.model.site_name2id("target")
@@ -946,18 +1167,61 @@ def main(sim_path, horizon, radius, render, camera_name, out_dir, out_name,
                     phase3_repr_l1_distances.append(repr_l1_distance)
                     print(f" Representation L1 distance: {repr_l1_distance:.6f}")
 
-                    # Build state tensor with actual EE orientation
-                    pos = current_ee_pos
-                    rpy = get_ee_orientation(sim, ee_sid)  # Use actual orientation
+                    # Build state tensor in DROID frame (model was trained on DROID-frame data)
+                    robohive_rpy = get_ee_orientation(sim, ee_sid)
+                    robohive_pose = np.concatenate([current_ee_pos, robohive_rpy])
+                    droid_pose = transform_pose_to_droid_frame(robohive_pose)
                     gripper_width = 0.0
-                    current_state = np.concatenate([pos, rpy, [gripper_width]], axis=0)
+                    current_state = np.concatenate([droid_pose, [gripper_width]], axis=0)
                     states = torch.tensor(
                         current_state,
                         device=device
                     ).unsqueeze(0).unsqueeze(0)  # [1,1,7]
                     s_n = states[:, :1].to(dtype=z_n.dtype)
 
-                    # Plan next action using CEM
+                    # Generate energy landscape if requested
+                    if visualize_energy_landscape and save_images_this_episode:
+                        try:
+                            heatmap, a1_edges, a2_edges, a1_label, a2_label = compute_energy_landscape(
+                                encoder=encoder,
+                                predictor=predictor,
+                                tokens_per_frame=tokens_per_frame,
+                                current_rep=z_n,
+                                current_state=s_n,
+                                goal_rep=z_goal,
+                                experiment_type=experiment_type,
+                                nsamples=9,
+                                grid_size=0.075,
+                                normalize_reps=True,
+                                device=device
+                            )
+
+                            # Choose between 2D heatmap and 3D surface plot
+                            if energy_landscape_3d:
+                                energy_path = os.path.join(
+                                    planning_img_dir,
+                                    f"step{step_idx:02d}_energy_landscape_3d.png"
+                                )
+                                plot_energy_landscape_3d(
+                                    heatmap, a1_edges, a2_edges,
+                                    a1_label, a2_label,
+                                    energy_path, step_idx, distance
+                                )
+                            else:
+                                energy_path = os.path.join(
+                                    planning_img_dir,
+                                    f"step{step_idx:02d}_energy_landscape.png"
+                                )
+                                plot_energy_landscape(
+                                    heatmap, a1_edges, a2_edges,
+                                    a1_label, a2_label,
+                                    energy_path, step_idx, distance
+                                )
+                            print(f" Saved energy landscape: {energy_path}")
+                        except Exception as e:
+                            print(f" Warning: Could not generate energy landscape: {e}")
+
+                    # Plan next action using CEM (model outputs DROID frame)
                     start_time = time.time()
                     actions = world_model.infer_next_action(z_n, s_n, z_goal).cpu().numpy()
                     end_time = time.time()
@@ -983,10 +1247,11 @@ def main(sim_path, horizon, radius, render, camera_name, out_dir, out_name,
                     phase3_actions_transformed.append(transformed_action.copy())
 
                     # Convert transformed action to joint-space waypoints
+                    # Use RoboHive frame positions for IK
                     planned_delta = transformed_action[:7]  # dx,dy,dz,dp,dy,dr,grip
                     try:
                         new_pos, new_rpy = compute_new_pose(
-                            pos,
+                            current_ee_pos,  # Use RoboHive frame for IK
                             planned_delta[:3],
                             planned_delta[3:6]
                         )

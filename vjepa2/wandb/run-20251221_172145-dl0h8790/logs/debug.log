@@ -1,0 +1,23 @@
+2025-12-21 17:21:45,548 INFO    MainThread:1888012 [wandb_setup.py:_flush():81] Current SDK version is 0.22.2
+2025-12-21 17:21:45,548 INFO    MainThread:1888012 [wandb_setup.py:_flush():81] Configure stats pid to 1888012
+2025-12-21 17:21:45,548 INFO    MainThread:1888012 [wandb_setup.py:_flush():81] Loading settings from /home/s185927/.config/wandb/settings
+2025-12-21 17:21:45,548 INFO    MainThread:1888012 [wandb_setup.py:_flush():81] Loading settings from /home/s185927/thesis/vjepa2/wandb/settings
+2025-12-21 17:21:45,548 INFO    MainThread:1888012 [wandb_setup.py:_flush():81] Loading settings from environment variables
+2025-12-21 17:21:45,548 INFO    MainThread:1888012 [wandb_init.py:setup_run_log_directory():705] Logging user logs to /home/s185927/thesis/vjepa2/wandb/run-20251221_172145-dl0h8790/logs/debug.log
+2025-12-21 17:21:45,548 INFO    MainThread:1888012 [wandb_init.py:setup_run_log_directory():706] Logging internal logs to /home/s185927/thesis/vjepa2/wandb/run-20251221_172145-dl0h8790/logs/debug-internal.log
+2025-12-21 17:21:45,548 INFO    MainThread:1888012 [wandb_init.py:init():832] calling init triggers
+2025-12-21 17:21:45,548 INFO    MainThread:1888012 [wandb_init.py:init():837] wandb.init called with sweep_config: {}
+config: {'app': 'vjepa_droid', 'cpus_per_task': 12, 'data': {'batch_size': 8, 'camera_views': ['left_mp4_path'], 'crop_size': 256, 'dataset_fpcs': [8], 'datasets': ['/data/s185927/droid_sim/axis_aligned/splits/train_025pct.csv'], 'fps': 4, 'num_workers': 12, 'patch_size': 16, 'pin_mem': True, 'stereo_view': False, 'tubelet_size': 2}, 'data_aug': {'auto_augment': False, 'horizontal_flip': False, 'motion_shift': False, 'random_resize_aspect_ratio': [1.0, 1.0], 'random_resize_scale': [1.777, 1.777], 'reprob': 0.0}, 'folder': '/data/s185927/vjepa2/weights/droid/x_axis_finetune_025pct', 'loss': {'auto_steps': 2, 'loss_exp': 1.0, 'normalize_reps': True, 'reg_coeff': 0.0}, 'mem_per_gpu': '220G', 'meta': {'context_encoder_key': 'target_encoder', 'dtype': 'bfloat16', 'eval_freq': 100, 'load_predictor': True, 'pretrain_checkpoint': '/home/s185927/.cache/torch/hub/checkpoints/vjepa2-ac-vitg.pt', 'resume_checkpoint': None, 'save_every_freq': 25, 'seed': 239, 'target_encoder_key': 'target_encoder', 'use_sdpa': True, 'load_encoder': True, 'early_stopping_patience': 50, 'val_freq': 5, 'early_stopping_min_delta': 0.001}, 'model': {'model_name': 'vit_giant_xformers', 'pred_depth': 24, 'pred_embed_dim': 1024, 'pred_is_frame_causal': True, 'pred_num_heads': 16, 'uniform_power': True, 'use_activation_checkpointing': True, 'use_extrinsics': False, 'use_rope': True}, 'nodes': 4, 'optimization': {'anneal': 15, 'epochs': 100, 'final_lr': 0.0, 'final_weight_decay': 0.04, 'ipe': 300, 'lr': 0.0001, 'start_lr': 2e-05, 'warmup': 5, 'weight_decay': 0.04, 'enc_lr_scale': 0.0}, 'tasks_per_node': 8, 'val_data': {'batch_size': 8, 'camera_views': ['left_mp4_path'], 'crop_size': 256, 'dataset_fpcs': [8], 'datasets': ['/data/s185927/droid_sim/axis_aligned/splits/val_trajectories.csv'], 'fps': 4, 'num_workers': 12, 'patch_size': 16, 'pin_mem': True, 'stereo_view': False, 'tubelet_size': 2}, '_wandb': {}}
+2025-12-21 17:21:45,548 INFO    MainThread:1888012 [wandb_init.py:init():880] starting backend
+2025-12-21 17:21:45,751 INFO    MainThread:1888012 [wandb_init.py:init():883] sending inform_init request
+2025-12-21 17:21:45,754 INFO    MainThread:1888012 [wandb_init.py:init():891] backend started and connected
+2025-12-21 17:21:45,755 INFO    MainThread:1888012 [wandb_init.py:init():961] updated telemetry
+2025-12-21 17:21:45,758 INFO    MainThread:1888012 [wandb_init.py:init():985] communicating run to backend with 90.0 second timeout
+2025-12-21 17:21:46,504 INFO    MainThread:1888012 [wandb_init.py:init():1036] starting run threads in backend
+2025-12-21 17:21:46,573 INFO    MainThread:1888012 [wandb_run.py:_console_start():2509] atexit reg
+2025-12-21 17:21:46,573 INFO    MainThread:1888012 [wandb_run.py:_redirect():2357] redirect: wrap_raw
+2025-12-21 17:21:46,573 INFO    MainThread:1888012 [wandb_run.py:_redirect():2426] Wrapping output streams.
+2025-12-21 17:21:46,574 INFO    MainThread:1888012 [wandb_run.py:_redirect():2449] Redirects installed.
+2025-12-21 17:21:46,575 INFO    MainThread:1888012 [wandb_init.py:init():1076] run started, returning control to user process
+2025-12-21 17:22:02,690 INFO    wandb-AsyncioManager-main:1888012 [service_client.py:_forward_responses():80] Reached EOF.
+2025-12-21 17:22:02,690 INFO    wandb-AsyncioManager-main:1888012 [mailbox.py:close():137] Closing mailbox, abandoning 1 handles.

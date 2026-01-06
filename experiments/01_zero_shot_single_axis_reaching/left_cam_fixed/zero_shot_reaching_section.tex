@@ -1,0 +1,60 @@
+\section{Zero-shot reaching tasks}
+\subsection{Methods}
+To test how well V-JEPA 2-AC generalizes to the simulated Robohive environment, the model is applied in a zero-shot manner with a simple reaching objective along the $x$, $y$, and $z$ dimensions.
+
+For a given dimension, the robot arm is initialized at a starting position $s_0$. As usual, $x_k$ and $x_g$ denotes the observed frame at time $k$ and the goal frame respectively. Using the inverse kinematics solver, the arm then moves to a target position $s_g$ specified by being offset by 20 cm from the starting position along the given dimension, after which a snapshot $x_g$ is taken before the arm moves back to the starting position.
+
+The action planning is then executed over five steps, with the objective of minimizing ${\lVert p_5 - p_g\rVert}_2$, i.e. minimizing the Euclidian distance to the target position after the fifth step. In each step, the CEM action planning procedure is executed, as described in section [INSERT REFERENCE], resulting in a predicted action $a_k^{\star}$ which in this simple case consists only of changes to $p_k$, i.e. the end-effector rotation $r_k$ and gripper $g_k$ is kept fixed at all times. The action is executed using inverse kinematics to reach $s_{k+1}$. For each step, the Euclidian distance to the goal position as well as the $\ell_1$ distance between the feature maps $z_k$ and $z_g$ resulting from encoded frames are recorded. The experiment is repeated for $N=10$ episodes to gauge the variation resulting from the stochastic nature of the planning. An episode is considered successful if the final position error is less than 5 cm [LINK TO IK ERROR ANALYSIS].
+
+\subsection{Results}
+The results of the zero-shot reaching experiments are shown in Figure~\ref{fig:exp01_zero_shot}. Planning along the $y$ and $z$ axes leads to a consistent reduction in position error over successive planning steps, whereas planning along the $x$ axis consistently fails. In the latter case, the end-effector starts approximately 23\,cm from the goal and, after five planning steps, ends up approximately 19\,cm away---a modest improvement compared to the initial offset, but insufficient relative to the other axes.
+
+For the $y$ and $z$ axes, position error decreases monotonically from approximately 20--23\,cm to approximately 10\,cm. None of the episodes achieve the 5\,cm success threshold. Notably, for the $x$ axis, the latent-space distance decreases monotonically (from approximately 0.55 to 0.45) even as the physical position error shows minimal improvement, highlighting a fundamental misalignment between the learned representations and task-relevant geometry along this axis.
+
+To investigate whether additional planning steps could overcome these limitations, we extended the planning horizon to 10 steps. The results, shown in Figure~\ref{fig:exp01_zero_shot_long}, reveal that longer planning does not substantially improve performance. The $x$-axis position error remains at approximately 19\,cm after 10 steps---unchanged from the 5-step result. For the $y$ and $z$ axes, position errors plateau at approximately 10.6\,cm and 8.7\,cm respectively, showing only marginal improvement over the 5-step case. These results suggest that the performance bottleneck lies not in insufficient planning horizon, but in the fundamental misalignment between the learned latent representations and task-relevant Cartesian geometry.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{Pictures/Experiments/01_zero_shot_single_axis_reaching/left_cam_fixed/consolidated_analysis.png}
+    \caption{Zero-shot transfer of V-JEPA 2-AC from DROID to simulated Franka reaching (5-step planning). (a-c) Results for reaching along the $x$, $y$, and $z$ axes respectively. The model, post-trained with action-conditioning on real-world DROID data, is applied directly to the simulated RoboHive environment without fine-tuning. For each direction: first row shows start and goal frames; second row shows observed frame after each CEM-based planning step (only for first episode); third row shows $\ell_2$ distance to goal position; fourth row shows $\ell_1$ distance in V-JEPA's latent space. Error bars: ±1 std (N=10 episodes).}
+    \label{fig:exp01_zero_shot}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{Pictures/Experiments/01_zero_shot_single_axis_reaching/left_cam_long_planning/consolidated_analysis.png}
+    \caption{Extended planning horizon (10 steps) for zero-shot reaching. Same experimental setup as Figure~\ref{fig:exp01_zero_shot}, but with planning extended from 5 to 10 steps. For each direction: first row shows start and goal frames; second row shows $\ell_2$ distance to goal position; third row shows $\ell_1$ distance in V-JEPA's latent space. Position errors plateau after approximately 5 steps, indicating that the performance limitations arise from representation--geometry misalignment rather than insufficient planning horizon. Note: N=1 episode.}
+    \label{fig:exp01_zero_shot_long}
+\end{figure}
+
+\subsection{Discussion}
+Several informative observations arise from these results.
+
+\subsubsection{Varying planning performance across axes}
+The most salient qualitative difference is the failure of planning along the $x$ axis. Inspection of the intermediate frames $x_1,\dots,x_5$ reveals that planned actions in this setting move the arm predominantly in the positive $y$ direction, nearly orthogonal to the intended displacement. In contrast, planning along the $y$ and $z$ axes produces actions that move the end-effector consistently closer to the goal.
+
+Importantly, the inability to reach the 5\,cm success threshold for the $y$ and $z$ axes should be interpreted in light of the actuator precision limits of the simulated robot. As shown in Appendix~\ref{app:ik_error}, the IK and actuator execution pipeline exhibits a systematic absolute positioning error of approximately 4\,cm, largely independent of target distance. Consequently, the chosen success threshold lies close to the execution noise floor, and failure to satisfy it does not necessarily indicate incorrect high-level planning.
+
+
+\subsubsection{Sensitivity to camera viewpoint}
+The consistently poor performance along the $x$ axis is likely exacerbated by the sensitivity of V-JEPA~2 representations to camera viewpoint and scene geometry, as noted by the original authors. In the simulated setup, motion along the $x$ axis primarily induces lateral changes in the image plane, leading to pronounced background shifts and occlusion effects compared to motion along the $y$ or $z$ axes.
+
+As a result, displacements along the $x$ axis may induce latent changes that are weakly correlated, or even misaligned, with the underlying Cartesian displacement of the end-effector. When the planner minimizes distance in latent space, it may therefore favor actions that reduce perceptual differences unrelated to the intended task direction. This interpretation is consistent with the observed near-orthogonal motion and the high consistency of the failure across episodes, and suggests that the $x$-axis failure arises from representation–geometry misalignment amplified by viewpoint effects rather than from insufficient optimization or sampling.
+
+
+\subsubsection{Relation between observations and representations}
+Across axes, the relationship between physical position error $\lVert p_k - p_g \rVert_2$ and representation error $\lVert z_k - z_g \rVert_1$ is non-trivial. In the $y$-axis experiments, the representation error increases between steps 0 and 2 (from approximately 0.50 to 0.57) even as the physical position error decreases. In contrast, for the $z$-axis experiments, both physical and representation errors decrease largely monotonically over all steps.
+
+The $x$-axis results provide the clearest demonstration of representation--geometry misalignment: the latent-space distance decreases monotonically from approximately 0.55 to 0.45 across planning steps, yet the physical position error barely improves. This indicates that the planner successfully minimizes its objective in latent space while failing to make progress in task-relevant Cartesian coordinates.
+
+This discrepancy highlights that reductions in latent-space distance do not uniformly correspond to reductions in Cartesian error, particularly under domain shift. While visually similar frames often yield similar representations, the mapping between representation similarity and task-relevant geometry is axis- and viewpoint-dependent.
+
+
+\subsubsection{Minimal variation across episodes}
+The standard deviations of both physical and representation errors are small across all planning steps, indicating low variability in the resulting action sequences across episodes. This behavior is expected given the CEM configuration: at each step, 800 candidate action sequences are sampled, while only the top 10 elites are retained to update the action distribution. This yields low-variance estimates of the latent-space planning objective and induces strong mode-seeking behavior.
+
+Furthermore, the presence of a $\sim$4\,cm actuator tracking error limits the effectiveness of small corrective actions. Once planned displacements fall below this scale, execution noise dominates, reinforcing convergence to similar trajectories across episodes. As a result, increasing the number of samples alone is unlikely to improve performance; meaningful gains would require improved alignment between the learned action-conditioned representations and task-relevant physical coordinates.
+
+
+\subsubsection{Slight mismatch in initial offsets}
+Across all three axes, the initial position error at step $k=0$ deviates slightly from the nominal 20\,cm offset used to define the goal position, with measured distances closer to 20--23\,cm. This discrepancy likely arises from small inaccuracies introduced by the IK solver and actuator execution when moving to the target and returning to the starting configuration. While this offset introduces a small systematic bias in the reported absolute distances, it does not affect the qualitative trends observed across planning steps. A detailed analysis of IK and actuator accuracy is provided in Appendix~\ref{app:ik_error}.

@@ -15,8 +15,8 @@ export MUJOCO_GL=egl
 # Go to project root
 cd /home/s185927/thesis/robohive/robohive/robohive
 
-OUT_DIR="/home/s185927/thesis/experiments/01_zero_shot_single_axis_reaching/left_cam_long_planning"
-COMMON_ARGS="--render offscreen --out_dir ${OUT_DIR} --fixed_target --planning_steps 10 --save_distance_data --max_episodes 1 --action_transform swap_xy_negate_x --enable_vjepa_planning --save_planning_images --camera_name left_cam"
+OUT_DIR="/home/s185927/thesis/experiments/01_zero_shot_single_axis_reaching/left_cam_energy_landscape"
+COMMON_ARGS="--render offscreen --out_dir ${OUT_DIR} --fixed_target --planning_steps 5 --save_distance_data --max_episodes 1 --action_transform swap_xy_negate_x --enable_vjepa_planning --save_planning_images --visualize_energy_landscape --energy_landscape_3d --camera_name left_cam"
 
 # Run sampling for x, y, z
 # python utils/robo_samples.py ${COMMON_ARGS} --experiment_type x

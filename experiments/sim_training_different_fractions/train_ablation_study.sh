@@ -12,6 +12,10 @@ set -e  # Exit on error
 # Configuration
 DEVICE="cuda:0"
 CONFIG_DIR="/home/s185927/thesis/vjepa2/configs/train/vitg16/ablation"
+
+# Wandb configuration
+export WANDB_PROJECT="vjepa2-ablation"
+export WANDB_ENTITY=""  # Set your wandb entity/username if needed
 LOG_DIR="/home/s185927/thesis/vjepa2/logs/ablation"
 PERCENTAGES=(25 50 75 100)
 

@@ -1,0 +1,36 @@
+\subsubsection{Inference-time latent alignment}
+
+The systematic offset between simulation and DROID embeddings observed in the previous section raises a natural question: can planning performance be recovered by correcting for this distributional mismatch at inference time? To investigate this, an affine alignment transformation is applied to simulation embeddings before they are passed to the action-conditioned predictor and planner.
+
+Using the same 1000-sample embedding sets collected for the distribution comparison, empirical means $\mu_{\text{sim}}, \mu_{\text{DROID}} \in \mathbb{R}^{1408}$ and covariance matrices $C_{\text{sim}}, C_{\text{DROID}} \in \mathbb{R}^{1408 \times 1408}$ are estimated for each domain. Two alignment methods are evaluated:
+
+\begin{enumerate}
+    \item \textbf{Mean-only alignment}: A simple translation that centers simulation embeddings on the DROID mean,
+    \begin{equation}
+        \tilde{z} = z - \mu_{\text{sim}} + \mu_{\text{DROID}}.
+    \end{equation}
+
+    \item \textbf{CORAL alignment}: A whitening--coloring transformation that matches both first- and second-order statistics~\cite{Sun2016DeepAdaptation},
+    \begin{equation}
+        \tilde{z} = (z - \mu_{\text{sim}})\, C_{\text{sim}}^{-\frac{1}{2}}\, C_{\text{DROID}}^{\frac{1}{2}} + \mu_{\text{DROID}},
+    \end{equation}
+    where a regularization term $\epsilon I$ with $\epsilon = 10^{-3}$ is added to each covariance matrix for numerical stability.
+\end{enumerate}
+
+For computational convenience, the alignment statistics $(\mu_{\text{sim}}, C_{\text{sim}})$ and $(\mu_{\text{DROID}}, C_{\text{DROID}})$ are estimated from mean-pooled frame embeddings (one $1408$-D vector per frame). During planning, the same affine transformation is applied consistently to both the current observation embedding $z_k$ and the goal embedding $z_g$, which are represented as token maps in $\mathbb{R}^{256 \times 1408}$. Each token embedding is treated as a $1408$-D feature vector and transformed independently, ensuring that all latent-space computations, including forward prediction and energy evaluation, operate in a common aligned coordinate system. The encoder, predictor parameters, and CEM hyperparameters remain unchanged from the baseline configuration.
+
+Figure~\ref{fig:latent_alignment_pca} illustrates the effect of each alignment on the embedding distributions. Mean-only alignment shifts the simulation cluster toward the DROID distribution but preserves the more compact covariance structure of the simulation embeddings. CORAL alignment additionally reshapes the distribution to match the covariance structure of DROID embeddings, resulting in substantial overlap in the dominant principal components.
+
+The reaching evaluation follows the same protocol as Section~\ref{sec:zero-shot_reaching}: single-axis reaching along the $x$, $y$, and $z$ dimensions with 20\,cm goal offsets, five planning steps, and $N=10$ episodes per condition. Three conditions are compared: no alignment (baseline), mean-only alignment, and CORAL alignment.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{Pictures/Experiments/01_zero_shot_single_axis_reaching/inference_time_latent_alignment/alignment_pca_full.png}
+    \caption{Effect of inference-time latent alignment on V-JEPA~2 frame embeddings. Visualization is shown in PCA space computed from mean-pooled frame embeddings ($1408$-D). (a)~Raw embeddings exhibit clear domain separation. (b)~Mean-only alignment centers the simulation distribution on the DROID mean. (c)~CORAL alignment additionally matches second-order statistics estimated on pooled embeddings. During planning, the same affine transform is applied token-wise to the predictor inputs.}
+
+    \label{fig:latent_alignment_pca}
+\end{figure}
+
+
+% Results figures will be added after experiment completion
+% See /home/s185927/thesis/experiments/01_zero_shot_single_axis_reaching/follow_up_experiments/inference_time_latent_alignment/

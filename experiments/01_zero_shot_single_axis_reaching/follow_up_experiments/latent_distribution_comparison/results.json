@@ -1,0 +1,20 @@
+{
+  "n_droid_frames": 1000,
+  "n_sim_frames": 1000,
+  "embedding_dim": 1408,
+  "pca_var_explained_pc1": 0.4233534038066864,
+  "pca_var_explained_pc2": 0.051080625504255295,
+  "pca_cumvar_10": 0.7045273184776306,
+  "inter_domain_mean_dist": 10.127721786499023,
+  "droid_intra_centroid_dist_mean": 7.872389316558838,
+  "droid_intra_centroid_dist_std": 1.2451550960540771,
+  "sim_intra_centroid_dist_mean": 3.1487905979156494,
+  "sim_intra_centroid_dist_std": 0.801201343536377,
+  "inter_pairwise_mean": 13.249645233154297,
+  "inter_pairwise_std": 1.1885318756103516,
+  "droid_intra_pairwise_mean": 11.126649856567383,
+  "droid_intra_pairwise_std": 1.7525913715362549,
+  "sim_intra_pairwise_mean": 4.4158244132995605,
+  "sim_intra_pairwise_std": 1.273587942123413,
+  "domain_gap_ratio": 1.70495953174561
+}

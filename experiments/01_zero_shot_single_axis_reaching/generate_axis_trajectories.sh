@@ -8,6 +8,13 @@
 
 set -e  # Exit on error
 
+# Load conda and activate environment
+source /opt/conda/etc/profile.d/conda.sh
+conda activate vjepa2-312
+
+# Enable headless rendering
+export MUJOCO_GL=egl
+
 BASE_OUT_DIR="/data/s185927/droid_sim/zero_shot_correlation"
 NUM_TRAJECTORIES=50  # 50 test trajectories per axis (matching finetuned analysis)
 SEED=42
@@ -17,6 +24,7 @@ REACH_DISTANCE_MAX=0.2001  # Tiny epsilon to satisfy max > min validation
 echo "Generating axis-aligned trajectories for zero-shot correlation analysis..."
 echo "Output directory: $BASE_OUT_DIR"
 echo "Fixed reach distance: ${REACH_DISTANCE_MIN}m"
+echo "Using robotiq gripper"
 echo ""
 
 # Generate x-axis trajectories
@@ -31,7 +39,8 @@ python /home/s185927/thesis/robohive/robohive/robohive/utils/generate_droid_sim_
   --train_test_split 0.0 \
   --save_split_info \
   --seed $SEED \
-  --reach_horizon 4.5
+  --reach_horizon 4.5 \
+  --gripper robotiq
 
 echo ""
 
@@ -47,7 +56,8 @@ python /home/s185927/thesis/robohive/robohive/robohive/utils/generate_droid_sim_
   --train_test_split 0.0 \
   --save_split_info \
   --seed $((SEED + 1)) \
-  --reach_horizon 4.5
+  --reach_horizon 4.5 \
+  --gripper robotiq
 
 echo ""
 
@@ -63,7 +73,8 @@ python /home/s185927/thesis/robohive/robohive/robohive/utils/generate_droid_sim_
   --train_test_split 0.0 \
   --save_split_info \
   --seed $((SEED + 2)) \
-  --reach_horizon 4.5
+  --reach_horizon 4.5 \
+  --gripper robotiq
 
 echo ""
 echo "Done! Generated trajectories for all three axes:"

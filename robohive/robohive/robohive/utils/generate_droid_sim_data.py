@@ -68,6 +68,7 @@ from scipy.spatial.transform import Rotation
 from robohive.physics.sim_scene import SimScene
 from robohive.utils.inverse_kinematics import qpos_from_site_pose
 from robohive.utils.min_jerk import generate_joint_space_min_jerk
+from robohive.utils.xml_utils import reassign_parent
 
 try:
     import skvideo.io
@@ -665,6 +666,12 @@ def save_trajectory(traj_dir, data, camera_name, fps=30):
     default=False,
     help='Save train/test split information to separate CSV files'
 )
+@click.option(
+    '--gripper',
+    type=click.Choice(['franka', 'robotiq']),
+    default='franka',
+    help='End-effector gripper type: franka (default parallel-jaw) or robotiq (2F-85)'
+)
 def main(
     sim_path,
     out_dir,
@@ -688,7 +695,8 @@ def main(
     bidirectional,
     train_test_split,
     success_threshold,
-    save_split_info
+    save_split_info,
+    gripper
 ):
     """Generate DROID-compatible simulation data."""
 
@@ -726,22 +734,44 @@ def main(
     out_path = Path(out_dir)
     out_path.mkdir(parents=True, exist_ok=True)
 
+    # Gripper-aware model path selection
+    FRANKA_MODEL = '/home/s185927/thesis/robohive/robohive/robohive/envs/arms/franka/assets/franka_reach_v0.xml'
+    ROBOTIQ_MODEL = '/home/s185927/thesis/robohive/robohive/robohive/envs/arms/franka/assets/franka_reach_robotiq_v0.xml'
+
+    # Override sim_path if using default Franka model and robotiq gripper is specified
+    if sim_path == FRANKA_MODEL and gripper == 'robotiq':
+        sim_path = ROBOTIQ_MODEL
+        print(f"Using RobotiQ gripper model: {sim_path}")
+
     # Load simulation
     print(f"\nLoading simulation: {sim_path}")
     sim = SimScene.get_sim(model_handle=sim_path)
+
+    # Attach gripper to arm if using robotiq
+    if gripper == 'robotiq':
+        raw_xml = sim.model.get_xml()
+        processed_xml = reassign_parent(xml_str=raw_xml, receiver_node="panda0_link7", donor_node="ee_mount")
+        # Keep processed file in same directory to preserve relative mesh paths
+        processed_path = os.path.join(os.path.dirname(os.path.abspath(sim_path)), '_robotiq_processed.xml')
+        with open(processed_path, 'w') as f:
+            f.write(processed_xml)
+        sim = SimScene.get_sim(model_handle=processed_path)
+        os.remove(processed_path)  # Clean up temp file
+        print("RobotiQ gripper attached to Franka arm (panda0_link7)")
 
     # Get site IDs
     ee_sid = sim.model.site_name2id(EE_SITE)
 
     # Get starting position
+    # Joint 7 rotated -45 degrees to match real robot gripper orientation
     ARM_JNT0 = np.array([
-        -0.0321842,
-        -0.394346,
-        0.00932319,
-        -2.77917,
-        -0.011826,
-        0.713889,
-        1.53183
+        -0.0321842,  # Joint 1
+        -0.394346,   # Joint 2
+        0.00932319,  # Joint 3
+        -2.77917,    # Joint 4
+        -0.011826,   # Joint 5
+        0.713889,    # Joint 6
+        0.74663      # Joint 7 (original 1.53183, -π/4 ≈ 0.785 for angled gripper)
     ])
 
     # Reset simulation

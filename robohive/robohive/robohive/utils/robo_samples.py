@@ -45,9 +45,19 @@ if os.path.isdir(_vjepa_root) and _vjepa_root not in sys.path:
 from notebooks.utils.world_model_wrapper import WorldModel
 from app.vjepa_droid.transforms import make_transforms
 from robohive.physics.sim_scene import SimScene
+
+# Latent alignment module for sim-to-DROID alignment
+_latent_align_path = "/home/s185927/thesis/experiments/01_zero_shot_single_axis_reaching/follow_up_experiments/inference_time_latent_alignment"
+if os.path.isdir(_latent_align_path) and _latent_align_path not in sys.path:
+    sys.path.insert(0, _latent_align_path)
+try:
+    from latent_alignment import LatentAligner
+except ImportError:
+    LatentAligner = None
 from robohive.utils.inverse_kinematics import qpos_from_site_pose
 from robohive.utils.min_jerk import generate_joint_space_min_jerk
 from robohive.utils.quat_math import euler2quat
+from robohive.utils.xml_utils import reassign_parent
 
 import click
 import numpy as np
@@ -72,12 +82,20 @@ EE_SITE = "end_effector"  # from the Franka chain include
 device = "cuda" if torch.cuda.is_available() else "cpu"
 print("Using device:", device)
 
+# Apply VJEPA optimizations if enabled via environment variable
+import os
+if os.environ.get('VJEPA_OPTIMIZE', '0') == '1' or os.environ.get('OPT_CUDNN', '0') == '1':
+    torch.backends.cudnn.benchmark = True
+    torch.backends.cuda.matmul.allow_tf32 = True
+    torch.backends.cudnn.allow_tf32 = True
+    print("VJEPA optimizations enabled: cudnn.benchmark + TF32")
+
 
 def robohive_to_droid_pos(pos_robohive):
     """
     Convert RoboHive position to DROID frame for display.
 
-    Transformation: DROID_x = RoboHive_y, DROID_y = RoboHive_x, DROID_z = RoboHive_z
+    Transformation: DROID_x = RoboHive_y, DROID_y = -RoboHive_x, DROID_z = RoboHive_z
 
     Args:
         pos_robohive: Position [x, y, z] in RoboHive frame
@@ -85,7 +103,7 @@ def robohive_to_droid_pos(pos_robohive):
     Returns:
         Position [x, y, z] in DROID frame
     """
-    return np.array([pos_robohive[1], pos_robohive[0], pos_robohive[2]])
+    return np.array([pos_robohive[1], -pos_robohive[0], pos_robohive[2]])
 
 
 def transform_pose_to_droid_frame(pose):
@@ -330,16 +348,18 @@ def compute_energy_landscape(
     energy = torch.mean(torch.abs(z_pred - goal_expanded), dim=[1, 2])  # [N^2]
     energy = energy.cpu().numpy()
 
-    # Extract action deltas for the two varied axes
-    actions_np = action_samples[:, 0, :].cpu().numpy()
-    axis1_vals = actions_np[:, vary_axes[0]]
-    axis2_vals = actions_np[:, vary_axes[1]]
+    # Reshape energy into 2D grid directly (samples are on a regular grid)
+    # The nested loop iterates d1 (axis1) in outer loop, d2 (axis2) in inner loop
+    # So energy is ordered as: [d1_0,d2_0], [d1_0,d2_1], ..., [d1_1,d2_0], ...
+    heatmap = energy.reshape(nsamples, nsamples)  # [nsamples_axis1, nsamples_axis2]
 
-    # Create 2D histogram with explicit bin edges to span full ±grid_size range
-    bin_edges = np.linspace(-grid_size, grid_size, nsamples + 1)
-    heatmap, axis1_edges, axis2_edges = np.histogram2d(
-        axis1_vals, axis2_vals, weights=energy, bins=[bin_edges, bin_edges]
-    )
+    # Create axis edges for plotting (cell centers become edges)
+    axis_values = np.linspace(-grid_size, grid_size, nsamples)
+    half_step = (axis_values[1] - axis_values[0]) / 2 if nsamples > 1 else grid_size
+    axis1_edges = np.concatenate([[axis_values[0] - half_step],
+                                   axis_values[:-1] + half_step,
+                                   [axis_values[-1] + half_step]])
+    axis2_edges = axis1_edges.copy()
 
     return heatmap, axis1_edges, axis2_edges, axis1_label, axis2_label
 
@@ -347,10 +367,15 @@ def compute_energy_landscape(
 def plot_energy_landscape(
     heatmap, axis1_edges, axis2_edges,
     axis1_label, axis2_label,
-    save_path, step_idx, distance_to_goal
+    save_path, step_idx, distance_to_goal,
+    optimal_action=None
 ):
     """
     Create and save energy landscape visualization.
+
+    Args:
+        optimal_action: Optional tuple (axis1_val, axis2_val) for the optimal action
+                        direction to goal, shown as a red marker.
     """
     import matplotlib
     matplotlib.use('Agg')  # Non-interactive backend
@@ -365,6 +390,12 @@ def plot_energy_landscape(
         cmap='viridis',
         aspect='auto'
     )
+
+    # Plot optimal action marker if provided
+    if optimal_action is not None:
+        ax.plot(optimal_action[0], optimal_action[1], 'r*', markersize=15,
+                markeredgecolor='white', markeredgewidth=1.5, label='Optimal direction')
+        ax.legend(loc='upper right', fontsize=8)
 
     ax.set_xlabel(axis1_label)
     ax.set_ylabel(axis2_label)
@@ -439,6 +470,15 @@ def plot_energy_landscape_3d(
     plt.tight_layout()
     plt.savefig(save_path, dpi=150, bbox_inches='tight')
     plt.close(fig)
+
+
+def set_seed(seed):
+    """Set random seeds for reproducibility across numpy, torch, and CUDA."""
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(seed)
+        torch.cuda.manual_seed_all(seed)
 
 
 def sample_point_in_sphere(center, R):
@@ -517,19 +557,68 @@ def sample_point_in_sphere(center, R):
               help='Generate energy landscape heatmaps during V-JEPA planning steps')
 @click.option('--energy_landscape_3d', is_flag=True, default=False,
               help='Use 3D surface plots instead of 2D heatmaps for energy landscape')
+@click.option(
+    '--gripper',
+    type=click.Choice(['franka', 'robotiq']),
+    default='franka',
+    help='End-effector gripper type: franka (default parallel-jaw) or robotiq (2F-85)'
+)
+@click.option(
+    '--seed',
+    type=int,
+    default=42,
+    help='Base random seed for reproducibility. Each episode uses seed + episode_id.'
+)
+@click.option(
+    '--latent_alignment',
+    type=click.Choice(['none', 'mean', 'coral']),
+    default='none',
+    help='Latent space alignment method: none (baseline), mean (mean-only), coral (whitening-coloring)'
+)
+@click.option(
+    '--latent_alignment_stats_path',
+    type=str,
+    default='/home/s185927/thesis/experiments/01_zero_shot_single_axis_reaching/follow_up_experiments/inference_time_latent_alignment/stats',
+    help='Path to directory containing alignment statistics (mu_sim.npy, mu_droid.npy, coral_matrix.npy)'
+)
 
 def main(sim_path, horizon, radius, render, camera_name, out_dir, out_name,
          width, height, device_id, fps, max_episodes, fixed_target,
          fixed_target_offset, experiment_type, num_targets, planning_steps,
          enable_vjepa_planning, save_distance_data, action_transform,
          save_planning_images, visualize_planning, vjepa_checkpoint,
-         visualize_energy_landscape, energy_landscape_3d):
+         visualize_energy_landscape, energy_landscape_3d, gripper, seed,
+         latent_alignment, latent_alignment_stats_path):
 
+    # Gripper-aware model path selection
+    FRANKA_MODEL = '/home/s185927/thesis/robohive/robohive/robohive/envs/arms/franka/assets/franka_reach_v0.xml'
+    ROBOTIQ_MODEL = '/home/s185927/thesis/robohive/robohive/robohive/envs/arms/franka/assets/franka_reach_robotiq_v0.xml'
+
+    # Override sim_path if using default Franka model and robotiq gripper is specified
+    if sim_path == FRANKA_MODEL and gripper == 'robotiq':
+        sim_path = ROBOTIQ_MODEL
+        print(f"Using RobotiQ gripper model: {sim_path}")
+
+    # Load the simulation
     sim = SimScene.get_sim(model_handle=sim_path)
+
+    # For RobotiQ model, reparent ee_mount to panda0_link7
+    if gripper == 'robotiq':
+        raw_xml = sim.model.get_xml()
+        processed_xml = reassign_parent(xml_str=raw_xml, receiver_node="panda0_link7", donor_node="ee_mount")
+        # Keep processed file in same directory to preserve relative mesh paths
+        processed_path = os.path.join(os.path.dirname(os.path.abspath(sim_path)), '_robotiq_processed.xml')
+        with open(processed_path, 'w') as f:
+            f.write(processed_xml)
+        sim = SimScene.get_sim(model_handle=processed_path)
+        os.remove(processed_path)  # Clean up temp file
+        print("RobotiQ gripper attached to Franka arm (panda0_link7)")
+
     target_sid = sim.model.site_name2id("target")
     ee_sid = sim.model.site_name2id(EE_SITE)
 
     # Use the keyframe starting position from XML
+    # Joint 7 rotated -45 degrees to match real robot gripper orientation
     ARM_JNT0 = np.array([
         -0.0321842,  # Joint 1
         -0.394346,   # Joint 2
@@ -537,7 +626,7 @@ def main(sim_path, horizon, radius, render, camera_name, out_dir, out_name,
         -2.77917,    # Joint 4
         -0.011826,   # Joint 5
         0.713889,    # Joint 6
-        1.53183      # Joint 7
+        0.74663      # Joint 7 (original 1.53183, -π/4 ≈ 0.785 for angled gripper)
     ])
 
     # Seed arm and get start EE
@@ -601,7 +690,9 @@ def main(sim_path, horizon, radius, render, camera_name, out_dir, out_name,
         'target_positions': [],
         'initial_ee_positions': [],
         'ik_success': [],
-        'episode_ids': []
+        'episode_ids': [],
+        'base_seed': seed,
+        'episode_seeds': []
     }
 
     # Load V-JEPA models if planning is enabled
@@ -679,9 +770,29 @@ def main(sim_path, horizon, radius, render, camera_name, out_dir, out_name,
             device=str(device)
         )
         print("V-JEPA models loaded successfully.")
+
+        # Initialize latent aligner if requested
+        latent_aligner = None
+        if latent_alignment != 'none':
+            if LatentAligner is None:
+                print(f"WARNING: latent_alignment='{latent_alignment}' requested but LatentAligner not available.")
+            else:
+                try:
+                    latent_aligner = LatentAligner.from_path(
+                        latent_alignment_stats_path,
+                        method=latent_alignment,
+                        device=str(device)
+                    )
+                    print(f"Latent aligner initialized: {latent_aligner}")
+                except Exception as e:
+                    print(f"WARNING: Failed to initialize latent aligner: {e}")
+                    latent_aligner = None
+        else:
+            print("Latent alignment: none (baseline)")
     else:
         world_model = None
         transform = None
+        latent_aligner = None
 
     def transform_action(action, transform_type='none'):
         """
@@ -736,6 +847,11 @@ def main(sim_path, horizon, radius, render, camera_name, out_dir, out_name,
         return transformed
 
     while True:
+        # Set episode-specific seed for reproducibility with variation between episodes
+        episode_seed = seed + episode
+        set_seed(episode_seed)
+        print(f"\n[Seed: {episode_seed} (base={seed}, episode={episode})]")
+
         # Episode start: reset to home position
         sim.data.qpos[:ARM_nJnt] = ARM_JNT0
         sim.data.qvel[:ARM_nJnt] = np.zeros(ARM_nJnt, dtype=float)
@@ -1158,14 +1274,23 @@ def main(sim_path, horizon, radius, render, camera_name, out_dir, out_name,
                         return h
 
                     h = forward_target_local(clips)
+
                     z_n = h[:, :tokens_per_frame].contiguous().clone()
                     z_goal = h[:, -tokens_per_frame:].contiguous().clone()
                     del h
 
+                    # Apply latent alignment if enabled (MODE 1: align both z_n and z_goal)
+                    # This ensures predictor and cost operate in the same aligned coordinate system
+                    if latent_aligner is not None:
+                        z_n = latent_aligner(z_n)
+                        z_goal = latent_aligner(z_goal)
+
                     # Calculate L1 distance between current and goal representations
+                    # (in aligned space if alignment is enabled)
                     repr_l1_distance = torch.mean(torch.abs(z_n - z_goal)).item()
                     phase3_repr_l1_distances.append(repr_l1_distance)
-                    print(f" Representation L1 distance: {repr_l1_distance:.6f}")
+                    print(f" Representation L1 distance: {repr_l1_distance:.6f}" +
+                          (f" (aligned: {latent_alignment})" if latent_alignment != 'none' else ""))
 
                     # Build state tensor in DROID frame (model was trained on DROID-frame data)
                     robohive_rpy = get_ee_orientation(sim, ee_sid)
@@ -1196,6 +1321,29 @@ def main(sim_path, horizon, radius, render, camera_name, out_dir, out_name,
                                 device=device
                             )
 
+                            # Compute optimal action direction (straight line to goal)
+                            # Direction in RoboHive frame, then convert to DROID frame
+                            direction_robohive = final_target_pos - current_ee_pos
+                            direction_droid = robohive_to_droid_pos(direction_robohive)
+
+                            # Extract the two axes shown in the landscape
+                            grid_size = 0.075
+                            if experiment_type in ('x', 'y'):
+                                # X-Y plane: axis1=X, axis2=Y
+                                opt_a1, opt_a2 = direction_droid[0], direction_droid[1]
+                            else:  # 'z'
+                                # X-Z plane: axis1=X, axis2=Z
+                                opt_a1, opt_a2 = direction_droid[0], direction_droid[2]
+
+                            # Scale to fit within grid while preserving direction
+                            max_component = max(abs(opt_a1), abs(opt_a2), 1e-8)
+                            if max_component > grid_size:
+                                scale = grid_size / max_component
+                                opt_a1 *= scale
+                                opt_a2 *= scale
+
+                            optimal_action = (opt_a1, opt_a2)
+
                             # Choose between 2D heatmap and 3D surface plot
                             if energy_landscape_3d:
                                 energy_path = os.path.join(
@@ -1215,7 +1363,24 @@ def main(sim_path, horizon, radius, render, camera_name, out_dir, out_name,
                                 plot_energy_landscape(
                                     heatmap, a1_edges, a2_edges,
                                     a1_label, a2_label,
-                                    energy_path, step_idx, distance
+                                    energy_path, step_idx, distance,
+                                    optimal_action=optimal_action
+                                )
+
+                                # Save energy landscape data for later composite plotting
+                                energy_data_path = os.path.join(
+                                    planning_img_dir,
+                                    f"step{step_idx:02d}_energy_data.npz"
+                                )
+                                np.savez(
+                                    energy_data_path,
+                                    heatmap=heatmap,
+                                    axis1_edges=a1_edges,
+                                    axis2_edges=a2_edges,
+                                    axis1_label=a1_label,
+                                    axis2_label=a2_label,
+                                    distance_to_goal=distance,
+                                    optimal_action=np.array(optimal_action),
                                 )
                             print(f" Saved energy landscape: {energy_path}")
                         except Exception as e:
@@ -1312,6 +1477,10 @@ def main(sim_path, horizon, radius, render, camera_name, out_dir, out_name,
                         h_final = forward_target_local(clips_final)
                         z_n_final = h_final[:, :tokens_per_frame].contiguous().clone()
                         z_goal_final = h_final[:, -tokens_per_frame:].contiguous().clone()
+                        # Apply alignment for consistent final distance computation
+                        if latent_aligner is not None:
+                            z_n_final = latent_aligner(z_n_final)
+                            z_goal_final = latent_aligner(z_goal_final)
                         final_repr_l1_distance = torch.mean(torch.abs(z_n_final - z_goal_final)).item()
                         phase3_repr_l1_distances.append(final_repr_l1_distance)
                         del h_final, z_n_final, z_goal_final
@@ -1375,6 +1544,7 @@ def main(sim_path, horizon, radius, render, camera_name, out_dir, out_name,
                 EE_START.tolist()
             )
             all_episode_data['episode_ids'].append(episode)
+            all_episode_data['episode_seeds'].append(episode_seed)
 
         # Save video if offscreen rendering
         if render == 'offscreen' and frames:
@@ -1444,6 +1614,10 @@ def main(sim_path, horizon, radius, render, camera_name, out_dir, out_name,
                 dtype=object
             ),
             phase3_final_distance=np.array(all_episode_data['phase3_final_distance']),
+            phase3_actions_raw_per_episode=np.array(
+                [np.array(a) for a in all_episode_data['phase3_actions_raw']],
+                dtype=object
+            ),
             target_positions=np.array(all_episode_data['target_positions']),
             episode_ids=np.array(all_episode_data['episode_ids'])
         )

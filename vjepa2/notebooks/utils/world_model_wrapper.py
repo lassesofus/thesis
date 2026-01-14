@@ -3,10 +3,15 @@
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
 
+import os
 import numpy as np
+import torch
 import torch.nn.functional as F
 
-from .mpc_utils import cem, compute_new_pose
+from .mpc_utils import cem, compute_new_pose, compute_new_pose_gpu, USE_GPU_POSE
+
+# AMP optimization flag
+USE_AMP = os.environ.get('OPT_AMP', '0') == '1' or os.environ.get('VJEPA_OPTIMIZE', '0') == '1'
 
 
 class WorldModel(object):
@@ -56,11 +61,17 @@ class WorldModel(object):
         def step_predictor(reps, actions, poses):
             B, T, N_T, D = reps.size()
             reps = reps.flatten(1, 2)
-            next_rep = self.predictor(reps, actions, poses)[:, -self.tokens_per_frame :]
-            if self.normalize_reps:
-                next_rep = F.layer_norm(next_rep, (next_rep.size(-1),))
+            # Use AMP for predictor inference if enabled
+            with torch.autocast(device_type='cuda', dtype=torch.float16, enabled=USE_AMP):
+                next_rep = self.predictor(reps, actions, poses)[:, -self.tokens_per_frame :]
+                if self.normalize_reps:
+                    next_rep = F.layer_norm(next_rep, (next_rep.size(-1),))
             next_rep = next_rep.view(B, 1, N_T, D)
-            next_pose = compute_new_pose(poses[:, -1:], actions[:, -1:])
+            # Pose computation outside autocast (small tensor, precision matters)
+            if USE_GPU_POSE:
+                next_pose = compute_new_pose_gpu(poses[:, -1:], actions[:, -1:])
+            else:
+                next_pose = compute_new_pose(poses[:, -1:], actions[:, -1:])
             return next_rep, next_pose
 
         mpc_action = cem(

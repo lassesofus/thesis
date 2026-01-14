@@ -1,0 +1,97 @@
+\subsection{The Cross-Entropy Method}\label{sec:CEM}
+
+The Cross-Entropy Method (CEM) is a stochastic, derivative-free algorithm for global optimization, originally introduced by Rubinstein~\cite{Rubinstein1999TheOptimization}. While not developed specifically for reinforcement learning, CEM has become a widely used planning method in model-based RL, particularly for trajectory optimization with learned dynamics models~\cite{Chua2018DeepModels, Wang2019ExploringNetworks, Hafner2018LearningPixels}. Its popularity stems from its simplicity, robustness to non-convex objectives, and strong empirical performance when combined with learned dynamics models.
+
+At a high level, CEM treats optimization as a rare-event estimation problem. Under an initial, uninformative sampling distribution, generating an optimal or near-optimal solution is unlikely. CEM addresses this by iteratively adapting a parametric sampling distribution so that high-quality solutions become increasingly probable. In each iteration, candidate solutions are sampled, evaluated, and the distribution is updated to concentrate probability mass (or density in the continuous case) around the best-performing samples.
+
+In our setting, CEM is used to plan action sequences over a finite horizon. We maintain a time-dependent diagonal Gaussian distribution over action sequences,
+\begin{equation}
+a_{k:k+H} \sim \mathcal{N}\!\left(\mu_{k:k+H}, \sigma^2_{k:k+H} I\right),
+\end{equation}
+where $k$ denotes the current time step and $H$ the planning horizon. The distribution is initialized with zero mean and a standard deviation equal to the maximum action magnitude, $\sigma_0 = a_{\max}$ (set to 7.5\,cm in our experiments).
+
+At each CEM iteration, $J$ candidate action sequences are sampled from the current distribution. Each individual action is clipped to the feasible range,
+\begin{equation}
+a^{(j)}_h \leftarrow \mathrm{clip}\!\left(a^{(j)}_h, -a_{\max}, a_{\max}\right),
+\end{equation}
+ensuring that all evaluated actions lie within the valid action space $[-a_{\max}, a_{\max}]^3$, while the underlying Gaussian remains unconstrained. This clipping is motivated by the training distribution of the world model: as noted by the V-JEPA-2 authors, large-magnitude actions are rare in the DROID dataset, and predictions under such actions are therefore less reliable. Enforcing action bounds helps prevent the planner from selecting out-of-distribution actions and improves rollout stability.
+
+
+Each sampled action sequence is evaluated by rolling out the learned world model from the current observation to predict future latent states. The cost of a sequence is defined as the $\ell_1$ distance between the predicted final latent state and the goal latent state. The top $K$ sequences with the lowest cost are selected as elite samples.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{Pictures/Theory/MPC.png}
+\caption{
+Latent-space action planning with the Cross-Entropy Method. Figure from \cite{Assran2025V-JEPAPlanning}.
+Starting from the current observation, the encoder $E_\theta$ produces a latent state representation.
+A sequence of candidate action distributions is used to sample action trajectories, which are rolled out
+through the world model predictor $P_\phi$ to obtain imagined future latent states.
+Planning is performed by minimizing the $\ell_1$ distance between the predicted latent state at the end
+of the planning horizon and the latent representation of a goal image.
+The parameters of the action distributions are iteratively updated using CEM, and the mean of the first
+distribution is executed as the next action.
+}
+    \label{fig:cem_planning}
+\end{figure}
+
+The parameters of the Gaussian distribution are then updated using the empirical statistics of the elite set with momentum-based smoothing,
+\begin{align}
+\mu &\leftarrow (1 - \alpha_\mu)\,\bar{\mu}_K + \alpha_\mu\,\mu, \\
+\sigma &\leftarrow (1 - \alpha_\sigma)\,\bar{\sigma}_K + \alpha_\sigma\,\sigma,
+\end{align}
+where $\bar{\mu}_K$ and $\bar{\sigma}_K$ denote the empirical mean and standard deviation of the elite action sequences, and $\alpha_\mu, \alpha_\sigma$ are momentum coefficients.
+
+After $I$ iterations, the planner executes the first-step mean action $\mu_k$. Since evaluation is performed entirely in latent space, CEM planning does not require image generation, allowing efficient evaluation of large batches of candidate action sequences.
+
+Figure~\ref{fig:cem_planning} illustrates the overall planning procedure.
+Starting from the current observation, actions are optimized by rolling out the learned world model in
+latent space and minimizing the $\ell_1$ distance between the predicted final latent state and a goal
+latent representation.
+The Cross-Entropy Method is used to iteratively refine a sequence of Gaussian action distributions,
+enabling efficient trajectory optimization without requiring gradients or pixel-level reconstruction.
+
+
+Algorithm~\ref{alg:cem} summarizes the CEM-based action planning procedure used in the conducted experiments. The algorithm explicitly details the sampling, roll-out, evaluation, and distribution update steps performed at each planning iteration.
+
+
+\begin{algorithm}[t]
+\caption{Cross-Entropy Method for Action Planning (V-JEPA-2-AC)}
+\label{alg:cem}
+\begin{algorithmic}[1]
+\Require Current observation $x_k$, goal image $x_g$, encoder $E_\theta$, action-conditioned predictor $P_\theta$, end-effector state $s_k$, kinematic state transition $f_{\text{kin}}$, planning horizon $H$, number of samples $J$, elite size $K$, number of iterations $I$, action bound $a_{\max}$, momentum coefficients $\alpha_\mu$, $\alpha_\sigma$
+\Ensure Planned action $a_k$
+
+\State $z_k \gets E_\theta(x_k)$ \Comment{Encode current frame}
+\State $z_g \gets E_\theta(x_g)$ \Comment{Encode goal frame}
+
+\State Initialize $\mu_h \gets \mathbf{0} \in \mathbb{R}^3$ for $h = 1, \ldots, H$
+\State Initialize $\sigma_h \gets a_{\max}\cdot \mathbf{1} \in \mathbb{R}^3$ for $h = 1, \ldots, H$
+
+\For{$i = 1, \ldots, I$} \Comment{CEM iterations}
+    \For{$j = 1, \ldots, J$} \Comment{Sample candidate trajectories}
+        \State $z^{(j)}_0 \gets z_k$
+        \State $s^{(j)}_0 \gets s_k$
+        \For{$h = 1, \ldots, H$}
+            \State $a^{(j)}_h \sim \mathcal{N}(\mu_h, \sigma_h^2 I)$
+            \State $a^{(j)}_h \gets \mathrm{clip}(a^{(j)}_h, -a_{\max}, a_{\max})$
+            \State $z^{(j)}_h \gets P_\theta\!\left(z^{(j)}_{h-1}, s^{(j)}_{h-1}, a^{(j)}_h\right)$
+            \State $s^{(j)}_h \gets f_{\text{kin}}\!\left(s^{(j)}_{h-1}, a^{(j)}_h\right)$
+        \EndFor
+        \State $d^{(j)} \gets \left\| z^{(j)}_H - z_g \right\|_1$
+    \EndFor
+
+    \State $\mathcal{K} \gets \text{indices of the } K \text{ smallest values in } \{d^{(j)}\}_{j=1}^J$
+
+    \For{$h = 1, \ldots, H$} \Comment{Update Gaussian parameters using elite set statistics}
+        \State $\bar{\mu}_h \gets \frac{1}{K} \sum_{j \in \mathcal{K}} a^{(j)}_h$
+        \State $\bar{\sigma}_h \gets \sqrt{\frac{1}{K} \sum_{j \in \mathcal{K}} \left(a^{(j)}_h - \bar{\mu}_h\right)^2}$
+        \State $\mu_h \gets (1 - \alpha_\mu)\,\bar{\mu}_h + \alpha_\mu\,\mu_h$
+        \State $\sigma_h \gets (1 - \alpha_\sigma)\,\bar{\sigma}_h + \alpha_\sigma\,\sigma_h$
+    \EndFor
+\EndFor
+
+\State \Return $\mu_1$ \Comment{Execute first-step mean action}
+\end{algorithmic}
+\end{algorithm}
+

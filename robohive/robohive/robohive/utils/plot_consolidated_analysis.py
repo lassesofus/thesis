@@ -24,7 +24,8 @@ PLOT_PARAMS_LOCAL = {
     # Scaled font sizes for larger figure (30x15 vs 14x8)
     "label_size": 28,
     "legend_size": 20,
-    "tick_label_size": 18,
+    "tick_label_size": 24,
+    "tick_length": 8,
     # Scaled line widths for larger figure
     "euclid_linewidth": 3.0,
     "euclid_markersize": 8,
@@ -299,7 +300,7 @@ def main(out_dir, episode, threshold):
         y_ticks = np.arange(0.0, all_dist_max + y_step * 0.5, y_step)
         ax_euclidean.set_yticks(y_ticks)
         ax_euclidean.set_yticklabels([f'{y:.2f}' for y in y_ticks])
-        ax_euclidean.tick_params(axis='both', labelsize=PLOT_PARAMS_LOCAL["tick_label_size"], length=PLOT_PARAMS["tick_length"])
+        ax_euclidean.tick_params(axis='both', labelsize=PLOT_PARAMS_LOCAL["tick_label_size"], length=PLOT_PARAMS_LOCAL["tick_length"])
 
         # L1 Representation plot
         ax_repr = fig.add_subplot(outer_gs[2, col_idx])
@@ -319,24 +320,20 @@ def main(out_dir, episode, threshold):
             )
             ax_repr.set_xlabel('Step (k)', fontsize=PLOT_PARAMS_LOCAL["label_size"])
             if col_idx == 0:
-                ax_repr.set_ylabel(r'$\|z_k - z_g\|_1$', fontsize=PLOT_PARAMS_LOCAL["label_size"])
+                ax_repr.set_ylabel(r'$\frac{1}{TD}\|z_k - z_g\|_1$', fontsize=PLOT_PARAMS_LOCAL["label_size"])
                 ax_repr.legend(fontsize=PLOT_PARAMS_LOCAL["legend_size"])
             ax_repr.grid(True, alpha=PLOT_PARAMS["grid_alpha"])
             ax_repr.set_xticks(stat_repr_steps)
 
-            # Shared y-axis limits for representation with consistent decimal formatting
+            # Shared y-axis limits for representation
             margin = 0.05 * abs(all_repr_max - all_repr_min)
             y_min_repr = all_repr_min - margin
             y_max_repr = all_repr_max + margin
             ax_repr.set_ylim(y_min_repr, y_max_repr)
-            # Set y-ticks with 0.05 increments
-            y_ticks_repr = np.arange(np.floor(y_min_repr / 0.05) * 0.05, y_max_repr + 0.025, 0.05)
-            ax_repr.set_yticks(y_ticks_repr)
-            ax_repr.set_yticklabels([f'{y:.2f}' for y in y_ticks_repr])
         else:
             ax_repr.text(0.5, 0.5, 'No repr data', ha='center', va='center', transform=ax_repr.transAxes)
 
-        ax_repr.tick_params(axis='both', labelsize=PLOT_PARAMS_LOCAL["tick_label_size"], length=PLOT_PARAMS["tick_length"])
+        ax_repr.tick_params(axis='both', labelsize=PLOT_PARAMS_LOCAL["tick_label_size"], length=PLOT_PARAMS_LOCAL["tick_length"])
 
     # Save figure
     output_path = os.path.join(out_dir, 'consolidated_analysis.png')

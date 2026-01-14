@@ -1,0 +1,12 @@
+\subsection{Results}
+The results of the zero-shot reaching experiments are shown in Figure~\ref{fig:exp01_zero_shot}. For reaching along the $y$-axis, the planner achieves the strongest performance, reducing Cartesian position error from approximately 20\,cm to 9\,cm on average after five planning steps. Error reduction is largely monotonic with low variance across episodes, indicating stable and repeatable planning behavior under stochastic CEM optimization. For the $x$- and $z$-axes, the average performance is considerably weaker. Reaching along the $x$-axis reduces the average error from approximately 23\,cm to 16\,cm, while the $z$-axis shows a reduction from 23\,cm to 15\,cm. Both axes exhibit non-monotonic error trajectories, with intermediate steps sometimes increasing rather than decreasing the Cartesian distance. The $z$-axis displays particularly high variance across episodes, with final errors ranging from 8.5\,cm to 26.7\,cm. None of the 30 episodes (10 per axis) reach the 5\,cm success threshold.
+
+% See figure in /home/s185927/thesis/experiments/01_zero_shot_single_axis_reaching/left_cam_fixed_cem_optimized/consolidated_analysis.png
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{Pictures/Experiments/01_zero_shot_single_axis_reaching/consolidated_analysis.png}
+    \caption{Results of zero-shot single-axis reaching tasks with V-JEPA 2-AC. Each column shows reaching along a different axis ($x$, $y$, $z$): start and goal frames (row 1), captured frames from the executed trajectory of the first episode (row 2), step-wise Cartesian position error (row 3), and average latent $\ell_1$ latent-space error (row 4). Error bars: $\pm1$ std ($N=10$ episodes).}
+    \label{fig:exp01_zero_shot}
+\end{figure}
+

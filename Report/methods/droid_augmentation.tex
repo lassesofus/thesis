@@ -1,0 +1,166 @@
+\section{Augmenting the DROID data with action instructions}
+
+A dataset of visually distinguishable frame pairs is constructed from the DROID manipulation corpus~\cite{Khazatsky2024DROID:Dataset} to support VLM-based generation of synthetic, post-hoc natural language action instructions. The objective is to sample pairs of observations $(x_k, x_{k+d})$, where $k$ denotes a frame index and $d$ the temporal separation in frames, such that the resulting visual change is physically interpretable while maintaining broad coverage of robot motion. The left external RGB camera is used throughout, as this was the camera angle used for action-conditioning the V-JEPA~2-AC predictor.
+
+Frame pairs are sampled at four temporal offsets, corresponding to separations of 30, 50, 100, and 200 frames, spanning motions from short single-step adjustments to longer compound actions. For each horizon, candidate pairs are generated with a stride of 30 frames to limit overlap. Candidate frame pairs are first filtered based on semantic and visual validity, and are subsequently subsampled to control dataset balance and scene diversity.
+
+\subsection{Filtering criteria}
+
+Each candidate frame pair $(k, k+d)$ is evaluated against a sequence of criteria designed to ensure visual interpretability and reliable instruction generation. Filters are applied in two stages: (i) pair-level validity and interpretability constraints, and (ii) dataset-level balancing constraints.
+
+\paragraph{Validity and interpretability.}
+The following filters operate on individual frame pairs and remove samples that are unsuitable for VLM-based annotation.
+
+\begin{enumerate}
+    \item \textbf{Arm visibility.}  
+    The robot arm must be visible in both frames. Visibility is approximated using the end-effector position
+    \begin{equation}
+        \texttt{is\_visible}(p) = (p_x \geq 0.50\,\text{m}) \land (p_z \leq 0.42\,\text{m}),
+    \end{equation}
+    ensuring that the arm is forward in the workspace and within the camera field of view.
+
+    \item \textbf{Motion salience.}  
+    Frame pairs must exhibit a sufficiently large physical change to be visually distinguishable. Two salience tiers are introduced to include unambiguous large motions and smaller state changes that remain relevant for contrastive objectives. The following metrics are computed:
+    \begin{align}
+        \Delta_{\text{pos}} &= \lVert p_{k+d} - p_k \rVert_2, \\
+        \Delta_z &= |p^z_{k+d} - p^z_k|, \\
+        \Delta_{\text{grip}} &= |g_{k+d} - g_k|.
+    \end{align}
+    High-salience (Tier A) pairs satisfy
+    \begin{equation}
+        \Delta_{\text{pos}} \geq 0.10\,\text{m} \;\lor\; \Delta_z \geq 0.05\,\text{m} \;\lor\; \Delta_{\text{grip}} \geq 0.30,
+    \end{equation}
+    while moderate-salience (Tier B) pairs satisfy
+    \begin{equation}
+        \Delta_{\text{pos}} \geq 0.05\,\text{m} \;\lor\; \Delta_z \geq 0.03\,\text{m} \;\lor\; \Delta_{\text{grip}} \geq 0.20.
+    \end{equation}
+    Pairs below Tier B thresholds are discarded. The retained dataset is constructed using a fixed mixture of 60\% Tier A and 40\% Tier B samples.
+
+    \item \textbf{Occlusion control.}  
+    To avoid cases where the arm occludes the workspace, frame pairs are rejected when the roll angle $r_x$ deviates excessively from a downward-facing orientation. The deviation is measured as
+    \begin{equation}
+        \delta_{r_x} = \min(|r_x - 180^\circ|, |r_x + 180^\circ|),
+    \end{equation}
+    and a pair is discarded if $\delta_{r_x} > 40^\circ$ in either frame.
+\end{enumerate}
+
+\paragraph{Dataset balancing.}
+After semantic filtering, additional constraints are applied to control sample density and encourage broad coverage across manipulation scenes.
+
+\begin{enumerate}
+    \item \textbf{Temporal balance.}  
+    To prevent over-representation of dense trajectory segments, at most 50 frame pairs are retained per horizon per trajectory. When this limit is exceeded, pairs are uniformly subsampled to preserve temporal diversity.
+
+    \item \textbf{Scene diversity.}  
+    To encourage broad coverage across manipulation scenes rather than dense sampling from individual trajectories, at most 12 frame pairs are retained per trajectory. When this limit is exceeded, pairs are subsampled using stratified sampling over (horizon, tier) strata, with uniform selection by frame index within each stratum.
+\end{enumerate}
+
+All threshold values were selected based on a preliminary qualitative analysis of a small validation subset, comparing retained and rejected frame pairs to verify arm visibility, motion distinguishability, and robustness of VLM-generated instructions.
+
+Each retained frame pair is stored together with the frame indices $(k, k+d)$, extracted RGB images, motion statistics, and salience tier. This procedure yields a dataset that prioritizes visually interpretable state changes for reliable instruction generation while preserving sufficient diversity for downstream language–latent alignment.
+
+\subsection{Generating action instructions}
+
+Given filtered frame pairs, natural language action instructions are generated using a vision-language model (VLM) with chain-of-thought prompting. Specifically GPT-5-mini with high-detail image encoding is used via the OpenAI Batch API. The high-detail setting ensures fine-grained visual features are captured for accurate scene analysis. 
+
+Both frames in a pair are presented simultaneously in a single prompt, and the model is guided through a structured reasoning process before producing instructions. This approach improves accuracy by requiring explicit scene analysis before instruction generation, reducing errors in temporal interpretation.
+
+\subsubsection{Chain-of-thought prompting}
+The prompt presents both frames, labelled as \textsc{Frame~1 ($k$)} and \textsc{Frame~2 ($k+d$)}, and instructs the model to reason through the transition in four steps:
+\begin{enumerate}
+    \item \textbf{Describe Frame~1:} Analyse the initial scene, including gripper position, orientation, open/closed state, and the location of visible objects.
+    \item \textbf{Describe Frame~2:} Analyse the final scene, noting gripper position, whether it is holding an object, and any changes in object positions.
+    \item \textbf{Identify the change:} Compare the two frames and describe what action the robot \emph{completed} between them. The prompt explicitly instructs the model to describe only what has already happened, not what will happen next---for example, if the gripper is still holding an object in Frame~2, the action is ``moved X to Y'' rather than ``placed X''.
+    \item \textbf{Generate instructions:} Produce five diverse natural language instructions that could command the observed action. This is to provide richer supervision for downstream language--latent alignment.
+\end{enumerate}
+This explicit reasoning step helps the model interpret the temporal ordering of frames and produce instructions that reflect the observed state change. The full prompt is provided in Figure~\ref{fig:cot_prompt}.
+
+\begin{figure}[t]
+\centering
+\begin{tcolorbox}[
+    colback=gray!5,
+    colframe=gray!50,
+    width=\textwidth,
+    arc=2mm,
+    boxrule=0.5pt,
+    fontupper=\small\ttfamily,
+    left=2mm,
+    right=2mm,
+    top=1mm,
+    bottom=1mm
+]
+You are shown two frames from a robot manipulation video. Analyze them step by step.\\[0.5em]
+FRAME 1 (BEFORE): The first image\\
+FRAME 2 (AFTER): The second image\\[0.5em]
+Please reason through this carefully:\\[0.5em]
+STEP 1 - DESCRIBE FRAME 1:\\
+Look at the first image. Describe:\\
+- Where is the robot gripper? (position, orientation, open/closed)\\
+- What objects are visible and where are they?\\[0.5em]
+STEP 2 - DESCRIBE FRAME 2:\\
+Look at the second image. Describe:\\
+- Where is the robot gripper now? Is it holding something?\\
+- Where are the objects now? What changed position?\\[0.5em]
+STEP 3 - WHAT CHANGED:\\
+Compare the two frames. What action did the robot COMPLETE between frame 1 and frame 2?\\[0.5em]
+CRITICAL: Describe ONLY what has ALREADY happened, NOT what will happen next!\\
+- If gripper is still holding an object in frame 2 → action is "moved X to Y" NOT "placed X"\\
+- If object is released and on surface in frame 2 → action is "placed X" or "put down X"\\
+- If gripper just closed on object → action is "grabbed X" NOT "picked up and moved"\\[0.5em]
+STEP 4 - INSTRUCTIONS:\\
+Write 5 ways a human might command the EXACT action shown (frame 1 → frame 2 ONLY).\\
+- Instruction 1 MUST be SHORT (3-6 words)\\
+- Do NOT anticipate future steps - describe only what happened\\
+- Stay casual and natural \\[0.5em]
+Format:\\
+FRAME 1: description here\\
+FRAME 2: description here\\
+CHANGED: what happened\\
+INSTRUCTION 1: short instruction\\
+INSTRUCTION 2: natural instruction\\
+INSTRUCTION 3: natural instruction\\
+INSTRUCTION 4: natural instruction\\
+INSTRUCTION 5: natural instruction
+
+\end{tcolorbox}
+\caption{Chain-of-thought prompt used for action instruction generation. The prompt presents both frames simultaneously and guides the GPT-5-mini through explicit scene analysis before generating diverse instructions.}
+\label{fig:cot_prompt}
+\end{figure}
+
+Figure~\ref{fig:instruction_examples} shows representative examples of fairly accurate generated instructions across different manipulation scenarios.
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=\textwidth]{Pictures/Methods/DROID_sampling/droid_samples_annotated.png}
+    \caption{Examples of generated action instructions for sampled frame pairs from the DROID dataset. Each example shows the before/after frames, the model's scene descriptions, and five diverse instruction variants. The name of the original collector (here AUTOLab) and sampled temporal offset $d$ (in frames) is indicated for each pair.}
+    \label{fig:instruction_examples}
+\end{figure}
+
+\subsubsection{Limitations}
+
+The proposed procedure for generating frame–instruction triplets introduces several sources of noise that should be considered when interpreting downstream language–latent alignment results.
+
+First, short temporal horizons ($d = 30$) can produce frame pairs that are difficult to distinguish visually, even when they satisfy the motion-salience criteria. In these cases, the VLM is prone to hallucinating motion or state changes that are not clearly supported by visual evidence, leading to incorrect or misleading instructions, as illustrated in Fig.~\ref{fig:inaccurate_instruction_examples}.
+
+Second, compound actions spanning multiple motion primitives are often only partially reflected in the generated instructions. When a frame pair captures a sequence of movements rather than a single atomic action, the VLM may describe only the most salient component, omitting intermediate or secondary changes. As a result, the instruction under-specifies the full latent transition between frames.
+
+Third, despite arm-visibility and occlusion-control filters, some retained samples still exhibit partial occlusions or cases where the end-effector is near the image boundary or outside the frame. Such configurations can obscure object interactions or gripper state, degrading both scene interpretation and action description.
+
+Finally, the absence of intermediate frames fundamentally limits observability. All instructions are inferred solely from endpoint observations, making it impossible to reliably disambiguate certain transitions, such as grasping versus lifting, or object contact without subsequent displacement.
+
+Taken together, these factors introduce structured noise into the augmented dataset. In the following language-alignment experiments, this noise should be understood as an inherent limitation of post-hoc instruction generation from sparse visual supervision, rather than as annotation error that can be fully eliminated through additional filtering.
+
+
+\begin{figure}
+    \centering
+    \includegraphics[width=\linewidth]{Pictures/Methods/DROID_sampling/DROID_sample_inaccurate.png}
+    \caption{Examples of generated action instructions for sampled frame pairs from the DROID dataset illustrating common failure modes. The top example shows a hallucinated action of retracting the arm despite no clear visual change other than increased gripper aperture is present, while the bottom example shows an ignored compound movement where only part of the observed transition is reflected in the instruction. These cases represent typical sources of noise introduced by post-hoc instruction generation.}
+    \label{fig:inaccurate_instruction_examples}
+\end{figure}
+
+
+
+
+
+
+

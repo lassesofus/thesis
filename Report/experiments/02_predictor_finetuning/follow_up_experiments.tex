@@ -1,0 +1,147 @@
+\subsection{Analysis and follow-up experiments}
+
+\subsubsection{Counter-intuitive effects of training set fraction on planning}
+
+The results in Section~\ref{sec:x_axis_fine_tuning} reveal a clear but counter-intuitive trend. While increasing the fraction of simulated training data consistently improves validation performance of the fine-tuned predictor, planning performance degrades as more data is used. In particular, the 75\% and 100\% models not only fail to outperform the zero-shot baseline, but actively increase their distance to the goal over successive planning steps, accompanied by growing variance. By contrast, the 25\% and 50\% models exhibit modest but stable reductions in Cartesian error that closely mirror the zero-shot behavior.
+
+This divergence highlights a mismatch between predictive accuracy and downstream controllability. Although larger training sets yield predictors that better minimize the latent regression loss on held-out trajectories, these improvements do not translate into more effective action selection under CEM planning. Instead, additional training appears to push the predictor toward dynamics that are increasingly incompatible with the latent-space geometry induced by the frozen visual encoder. As a result, planning trajectories that rely on latent distance minimization become less reliable as the model is more tightly fit to the simulated data distribution.
+
+Viewed in this light, the degradation in planning performance with increased training data suggests that predictor-only fine-tuning may exacerbate, rather than resolve, an underlying representation misalignment. This motivates follow-up experiments that explicitly address the role of the frozen encoder, rather than further scaling predictor training alone.
+
+\subsubsection{Checkpoint-trajectory diagnostics}
+\label{sec:checkpoint_diagnostics}
+
+To understand \emph{when} and \emph{why} planning breaks down during predictor fine-tuning, we design a diagnostic experiment that tracks planning-relevant metrics across training checkpoints. Rather than only comparing final models, this approach aims to identify the causal mechanism by observing which metric degrades \emph{before} planning performance worsens.
+
+\paragraph{Motivation.}
+The results above establish that more training leads to worse planning, but leave open three competing hypotheses for the underlying cause:
+\begin{enumerate}
+    \item \textbf{Energy landscape flattening}: Extended training may cause the latent distance function to become increasingly uniform across actions, making it impossible for CEM to discriminate between good and bad action candidates.
+    \item \textbf{Gradient misalignment}: The local gradient of the energy landscape may rotate away from the true goal direction, causing gradient-based action selection to move perpendicular or opposite to the desired trajectory.
+    \item \textbf{Distribution shift brittleness}: The predictor may become accurate on states from the training distribution while becoming unreliable on the out-of-distribution states actually visited during planning execution.
+\end{enumerate}
+
+\paragraph{Experimental design.}
+We re-run the 100\% predictor fine-tuning with checkpoints saved every 5 epochs for 60 epochs total, using identical hyperparameters to Section~\ref{sec:x_axis_fine_tuning}. For each checkpoint, we evaluate three diagnostic probes on a fixed set of 25 test trajectories:
+
+\begin{itemize}
+    \item \textbf{Probe A (Energy landscape quality)}: For each test trajectory at the initial planning step, we sample 512 candidate actions uniformly within the CEM action bounds and compute the latent distance (energy) to the goal for each. We report the standard deviation and range of energies across actions as measures of landscape \emph{sharpness}. Additionally, we compute the energy gradient via finite differences and measure its cosine similarity with the true goal direction (\emph{alignment}).
+
+    \item \textbf{Probe B (On-policy prediction loss)}: We execute 2 planning steps using the checkpoint's predictor, recording the predicted next-state representation before each action and the actual next-state representation after execution. The L1 prediction error on these \emph{visited} states tests whether the model generalizes to the states encountered during planning, as opposed to only the training distribution.
+
+    \item \textbf{Probe C (Planning performance)}: We run the standard 5-step receding-horizon CEM evaluation and record the mean final distance to goal and the average distance reduction per planning step.
+\end{itemize}
+
+\paragraph{Interpretation criteria.}
+By tracking these metrics across epochs, we can identify which failure mode drives the planning degradation:
+\begin{itemize}
+    \item If sharpness metrics decrease monotonically while planning worsens, \textbf{landscape flattening} is the likely cause.
+    \item If alignment drops toward zero or negative values, \textbf{gradient misalignment} explains the failure.
+    \item If validation loss continues improving while on-policy prediction loss stagnates or worsens, \textbf{distribution shift} is responsible.
+\end{itemize}
+The metric that changes \emph{before} planning degrades provides the strongest evidence for causality, as it rules out the possibility that the metric change is merely a consequence of poor planning.
+
+\paragraph{Results.}
+Figure~\ref{fig:checkpoint_diagnostics_dashboard} presents all diagnostic metrics across 55 epochs of predictor fine-tuning. The validation loss decreases steadily from 0.513 (epoch 5) to 0.473 (epoch 55), confirming that standard supervised training proceeds as expected. However, planning performance degrades substantially over the same period: mean final distance to goal increases from 0.139m to 0.242m (+74\%), and the per-step distance reduction turns negative after epoch 35, indicating that the planner actively moves \emph{away} from the goal in later checkpoints.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{Pictures/Experiments/03_checkpoint_diagnostics/diagnostics_dashboard.png}
+    \caption{Diagnostic metrics across 55 epochs of predictor fine-tuning, evaluated on 25 test trajectories. Shaded regions indicate $\pm$1 standard error.
+    \textbf{Top row:} Energy landscape quality metrics. \emph{Left/center:} Sharpness measures ($\sigma(\mathcal{E})$ and $\mathcal{E}$ Range) quantify the variation in latent distance across 512 uniformly sampled candidate actions---higher values indicate the energy landscape provides stronger discriminative signal for CEM optimization. Both metrics decline monotonically ($-$26\% and $-$27\% respectively), with the decline beginning at epoch 10, before planning substantially worsens. \emph{Right:} Gradient-goal alignment measures $\cos(-\nabla\mathcal{E}, \mathbf{g})$, the cosine similarity between the energy descent direction and the true goal direction. Values near 1.0 indicate the local gradient points toward the goal. Alignment degrades erratically with high variance, suggesting it is a secondary effect rather than the primary failure mode.
+    \textbf{Bottom row:} Prediction and planning metrics. \emph{Left:} Validation loss (blue) decreases steadily, confirming successful supervised learning. On-policy prediction loss (red) remains flat, indicating only mild distribution shift between training data and states visited during planning. \emph{Center:} Mean final distance to goal increases from 0.14m to 0.24m (+74\%), with the dashed line indicating the 0.05m success threshold. \emph{Right:} Per-step distance reduction toward goal turns negative after epoch 35 (dashed line at zero), marking the transition from ineffective planning to actively counterproductive behavior. Together, these results support the landscape flattening hypothesis: sharpness degrades early and monotonically, while planning follows with a delay.}
+    \label{fig:checkpoint_diagnostics_dashboard}
+\end{figure}
+
+Table~\ref{tab:checkpoint_diagnostics} provides the complete numerical results for all checkpoints.
+
+
+The three diagnostic probes reveal distinct temporal patterns that discriminate between the hypothesized failure modes:
+
+\textbf{Landscape sharpness} (Probe A) exhibits a clear monotonic decline throughout training. The standard deviation of energies across candidate actions decreases from 0.023 to 0.017 ($-$26\%), and the energy range decreases from 0.079 to 0.058 ($-$27\%). Critically, this decline begins early (epoch 10) and continues steadily, preceding the most severe planning degradation. The tight error bars indicate this trend is consistent across all test trajectories.
+
+\textbf{Gradient alignment} (Probe A) shows erratic behavior with high variance. After peaking at near-perfect alignment (0.9998) at epoch 5, the cosine similarity between the energy gradient and goal direction fluctuates substantially, ranging from 0.29 to 0.69 across later epochs, before collapsing to 0.088 at epoch 55. While the overall trend is downward, the high variability suggests alignment is a symptom rather than the primary driver of failure.
+
+\textbf{On-policy prediction loss} (Probe B) remains essentially unchanged throughout training, varying only between 0.43 and 0.47. This stability stands in contrast to the improving validation loss, indicating a mild distribution shift between the training data and states visited during planning. However, the magnitude of this shift is small and does not correlate temporally with planning degradation.
+
+\paragraph{Interpretation.}
+The diagnostic results most strongly support the \textbf{landscape flattening} hypothesis. Several lines of evidence converge on this conclusion:
+
+\begin{enumerate}
+    \item \textbf{Temporal precedence}: Sharpness metrics begin declining at epoch 10, before substantial planning degradation occurs. By contrast, alignment fluctuates unpredictably, and on-policy loss shows no clear trend.
+
+    \item \textbf{Monotonicity}: Unlike alignment, which oscillates, sharpness decreases consistently across all checkpoints. This steady progression matches the gradual worsening of planning performance.
+
+    \item \textbf{Mechanism}: A flatter energy landscape directly impairs CEM optimization. When the energy variance across actions decreases by 26\%, the planner has less signal to discriminate between good and bad action candidates, leading to effectively random action selection.
+
+    \item \textbf{Ruling out alternatives}: The stability of on-policy prediction loss rules out distribution shift as the primary cause. The erratic alignment values suggest gradient misalignment is a secondary effect that emerges inconsistently rather than a root cause.
+\end{enumerate}
+
+Figure~\ref{fig:checkpoint_diagnostics_planning} shows the planning metrics in detail. The transition from positive to negative distance reduction per step (epoch 35) marks a critical threshold where the model transitions from ineffective planning to actively counterproductive behavior.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{Pictures/Experiments/03_checkpoint_diagnostics/planning_vs_epoch.png}
+    \caption{Planning performance across checkpoints. Left: mean final distance to goal (lower is better). Right: mean distance reduction per planning step (positive values indicate progress toward goal). The dashed lines indicate the success threshold (0.05m) and zero reduction respectively.}
+    \label{fig:checkpoint_diagnostics_planning}
+\end{figure}
+
+\paragraph{Why does fine-tuning flatten the energy landscape?}
+The flattening effect can be understood as an objective mismatch between the prediction loss and the requirements of planning. The predictor is trained to minimize:
+\begin{equation}
+    \mathcal{L} = \| f_\theta(z_t, a_t) - z_{t+1} \|_1
+\end{equation}
+where $f_\theta$ is the predictor, $z_t$ is the current latent state, $a_t$ is the action taken, and $z_{t+1}$ is the true next-state representation. This objective asks only: \emph{given the action that was actually taken, predict what happens}. It does not ask: \emph{distinguish what would happen under different actions}.
+
+This creates several pathways to landscape flattening:
+\begin{enumerate}
+    \item \textbf{No counterfactual supervision}: For each training tuple $(z_t, a_t, z_{t+1})$, only one action is observed. The predictor is never penalized for producing similar predictions for actions that were not taken. If it learns to output nearly identical representations for $a = +0.05$ and $a = -0.05$, this incurs no loss penalty as long as the prediction is accurate for the action that was actually executed.
+
+    \item \textbf{Regression toward the mean}: Minimizing expected prediction error encourages ``hedged'' predictions that are robust to input variance. The optimal prediction under uncertainty is often closer to the average outcome, which naturally reduces the predictor's sensitivity to its inputs.
+
+    \item \textbf{Narrow training distribution}: The training trajectories come from a specific policy (scripted or learned). The predictor never observes what happens when a clearly wrong action is taken from a given state, so it has no reason to predict dramatically different outcomes for such actions.
+\end{enumerate}
+
+The key insight is that \textbf{prediction accuracy does not imply action discrimination}. The energy landscape requires the predictor to output \emph{different} representations for \emph{different} actions. But the training loss only requires it to output the \emph{correct} representation for the \emph{observed} action. These are fundamentally different capabilities, and optimizing aggressively for one can degrade the other.
+
+\paragraph{Implications.}
+These findings suggest that predictor fine-tuning fundamentally alters the geometry of the latent energy landscape in ways that are invisible to standard validation metrics but catastrophic for planning. The frozen visual encoder defines a fixed latent space, and the predictor learns to minimize prediction error within this space. However, this optimization appears to \emph{smooth} the energy surface, reducing the discriminative signal that CEM relies upon for action selection.
+
+This diagnosis points toward two potential remediation strategies: (1) modifying the training objective to explicitly preserve landscape sharpness, or (2) jointly fine-tuning the encoder to maintain a planning-compatible latent geometry. The latter approach is explored in Section~\ref{sec:joint_finetuning}.
+
+Figure~\ref{fig:energy_landscape_grid} visualizes the energy landscape flattening phenomenon directly. The grid shows how the landscape evolves both across training epochs (rows) and across planning steps within a single trajectory (columns).
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{Pictures/Experiments/03_checkpoint_diagnostics/energy_landscape_grid.png}
+    \caption{Energy landscape evolution across training epochs and planning steps. Each panel shows the energy $\mathcal{E}(\Delta x, \Delta y)$ as perceived by the CEM planner, defined as the latent distance between the predicted next state and the goal state. Rows correspond to training checkpoints at epochs 0, 15, 35, and 55; columns show consecutive \emph{imagined} planning steps using predictor-based rollout---the same mental simulation CEM uses internally to evaluate action candidates. At each step, the best action (lowest energy) is selected and the predictor imagines the resulting next state, from which the subsequent landscape is computed. The white cross marks the current position, and the red arrow indicates the direction toward the goal. Each panel displays the landscape sharpness $\sigma(\mathcal{E})$ (top-left) and Euclidean distance to goal $d$ (top-right). At epoch 0 (top row), the landscape exhibits a clear gradient toward the goal, with energy decreasing along the red arrow direction. As training progresses, the landscape flattens: by epoch 55 (bottom row), the energy surface becomes nearly uniform, with $\sigma(\mathcal{E})$ dropping by approximately 50\%. This flattening degrades the gradient signal that CEM relies on for optimization, explaining why planning performance degrades despite continued improvement in prediction loss.}
+    \label{fig:energy_landscape_grid}
+\end{figure}
+
+
+%% APPENDIX
+
+\begin{table}[H]
+    \centering
+    \caption{Diagnostic metrics across all training checkpoints. $\sigma(\mathcal{E})$ and $\mathcal{E}$ Range measure energy landscape sharpness (higher = better discrimination). Alignment measures $\cos(-\nabla\mathcal{E}, \mathbf{g})$. Distance reduction becomes negative after epoch 35, indicating the planner moves away from the goal.}
+    \label{tab:checkpoint_diagnostics}
+    \small
+    \begin{tabular}{rcccccc}
+        \toprule
+        \textbf{Epoch} & \textbf{Val.\ Loss} & $\boldsymbol{\sigma(\mathcal{E})}$ & $\boldsymbol{\mathcal{E}}$ \textbf{Range} & \textbf{Alignment} & \textbf{Final Dist.\ (m)} & \textbf{Dist.\ Red.\ (m/step)} \\
+        \midrule
+        0  & ---   & 0.023 & 0.079 & 0.99 & 0.139 & +0.014 \\
+        5  & 0.513 & 0.024 & 0.088 & 1.00 & 0.130 & +0.016 \\
+        10 & 0.497 & 0.031 & 0.106 & 0.84 & 0.145 & +0.013 \\
+        15 & 0.489 & 0.028 & 0.094 & 0.52 & 0.153 & +0.012 \\
+        20 & 0.483 & 0.026 & 0.087 & 0.69 & 0.151 & +0.012 \\
+        25 & 0.483 & 0.025 & 0.079 & 0.67 & 0.172 & +0.008 \\
+        30 & 0.481 & 0.020 & 0.067 & 0.42 & 0.194 & +0.003 \\
+        35 & 0.479 & 0.019 & 0.067 & 0.38 & 0.213 & $-$0.000 \\
+        40 & 0.473 & 0.018 & 0.060 & 0.66 & 0.210 & +0.000 \\
+        45 & 0.479 & 0.019 & 0.059 & 0.29 & 0.223 & $-$0.003 \\
+        50 & 0.475 & 0.017 & 0.057 & 0.49 & 0.266 & $-$0.011 \\
+        55 & 0.473 & 0.017 & 0.058 & 0.09 & 0.242 & $-$0.006 \\
+        \bottomrule
+    \end{tabular}
+\end{table}

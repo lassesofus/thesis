@@ -1,0 +1,30 @@
+============================================================
+METRIC SENSITIVITY EXPERIMENT: SUMMARY
+============================================================
+
+1. BEST METRIC PER AXIS:
+   - X-axis: Normalized L1 (16.0 cm)
+   - Y-axis: L1 (baseline) (9.2 cm)
+   - Z-axis: Normalized L1 (11.1 cm)
+
+2. SUCCESS RATES (5cm / 10cm thresholds):
+   - L1 (baseline): 0/30 (5cm), 11/30 (10cm)
+   - Cosine: 0/30 (5cm), 10/30 (10cm)
+   - Normalized L1: 0/30 (5cm), 11/30 (10cm)
+
+3. QUALITATIVE BEHAVIOR:
+   - L1 (baseline): avg error reduction = 9.4 cm
+   - Cosine: avg error reduction = 7.4 cm
+   - Normalized L1: avg error reduction = 10.9 cm
+
+4. CONSISTENCY ACROSS SEEDS (std of final error):
+   - L1 (baseline): avg std = 1.99 cm
+   - Cosine: avg std = 0.89 cm
+   - Normalized L1: avg std = 0.51 cm
+
+5. INTERPRETATION:
+   -> Alternative metrics show improvement over L1 baseline.
+   -> This suggests metric sensitivity is a significant factor;
+      latent direction matters more than magnitude under domain shift.
+
+============================================================

@@ -1,0 +1,12 @@
+Traceback (most recent call last):
+  File "/home/s185927/thesis/experiments/sim_training_different_fractions/train_single_model_early_stopping.py", line 84, in <module>
+    main()
+  File "/home/s185927/thesis/experiments/sim_training_different_fractions/train_single_model_early_stopping.py", line 80, in main
+    main_with_early_stopping(args=config, resume_preempt=False)
+  File "/home/s185927/thesis/vjepa2/app/vjepa_droid/train_with_early_stopping.py", line 222, in main_with_early_stopping
+    csv_logger = CSVLogger(
+                 ^^^^^^^^^^
+  File "/home/s185927/thesis/vjepa2/src/utils/logging.py", line 51, in __init__
+    with open(self.fname, mode) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^
+OSError: [Errno 28] No space left on device: '/data/s185927/vjepa2/weights/droid/x_axis_finetune_050pct/log_r0.csv'

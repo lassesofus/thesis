@@ -1,0 +1,79 @@
+[INFO    ][2025-12-21 17:35:45][root                ][init_video_model         ] VisionTransformer(
+  (patch_embed): PatchEmbed3D(
+    (proj): Conv3d(3, 1408, kernel_size=(2, 16, 16), stride=(2, 16, 16))
+  )
+  (blocks): ModuleList(
+    (0-39): 40 x Block(
+      (norm1): LayerNorm((1408,), eps=1e-06, elementwise_affine=True)
+      (attn): RoPEAttention(
+        (qkv): Linear(in_features=1408, out_features=4224, bias=True)
+        (attn_drop): Dropout(p=0.0, inplace=False)
+        (proj): Linear(in_features=1408, out_features=1408, bias=True)
+        (proj_drop): Dropout(p=0.0, inplace=False)
+      )
+      (drop_path): Identity()
+      (norm2): LayerNorm((1408,), eps=1e-06, elementwise_affine=True)
+      (mlp): MLP(
+        (fc1): Linear(in_features=1408, out_features=6144, bias=True)
+        (act): GELU(approximate='none')
+        (fc2): Linear(in_features=6144, out_features=1408, bias=True)
+        (drop): Dropout(p=0.0, inplace=False)
+      )
+    )
+  )
+  (norm): LayerNorm((1408,), eps=1e-06, elementwise_affine=True)
+)
+[INFO    ][2025-12-21 17:35:45][root                ][init_video_model         ] VisionTransformerPredictorAC(
+  (predictor_embed): Linear(in_features=1408, out_features=1024, bias=True)
+  (action_encoder): Linear(in_features=7, out_features=1024, bias=True)
+  (state_encoder): Linear(in_features=7, out_features=1024, bias=True)
+  (extrinsics_encoder): Linear(in_features=6, out_features=1024, bias=True)
+  (predictor_blocks): ModuleList(
+    (0-23): 24 x ACBlock(
+      (norm1): LayerNorm((1024,), eps=1e-06, elementwise_affine=True)
+      (attn): ACRoPEAttention(
+        (qkv): Linear(in_features=1024, out_features=3072, bias=True)
+        (attn_drop): Dropout(p=0.0, inplace=False)
+        (proj): Linear(in_features=1024, out_features=1024, bias=True)
+        (proj_drop): Dropout(p=0.0, inplace=False)
+      )
+      (drop_path): Identity()
+      (norm2): LayerNorm((1024,), eps=1e-06, elementwise_affine=True)
+      (mlp): MLP(
+        (fc1): Linear(in_features=1024, out_features=4096, bias=True)
+        (act): GELU(approximate='none')
+        (fc2): Linear(in_features=4096, out_features=1024, bias=True)
+        (drop): Dropout(p=0.0, inplace=False)
+      )
+    )
+  )
+  (predictor_norm): LayerNorm((1024,), eps=1e-06, elementwise_affine=True)
+  (predictor_proj): Linear(in_features=1024, out_features=1408, bias=True)
+)
+[INFO    ][2025-12-21 17:35:45][root                ][init_video_model         ] Encoder number of parameters: 1012173952
+[INFO    ][2025-12-21 17:35:45][root                ][init_video_model         ] Predictor number of parameters: 305220992
+[INFO    ][2025-12-21 17:35:45][root                ][init_data                ] VideoDataset unsupervised data loader created
+[INFO    ][2025-12-21 17:35:45][root                ][init_data                ] VideoDataset unsupervised data loader created
+[INFO    ][2025-12-21 17:35:45][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Validation loader created with 20 batches
+[INFO    ][2025-12-21 17:35:45][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] iterations per epoch/dataset length: 300/20
+[INFO    ][2025-12-21 17:35:45][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Single GPU mode - not using DistributedDataParallel
+[INFO    ][2025-12-21 17:35:45][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Loading pretrained weights (single GPU mode) from /home/s185927/.cache/torch/hub/checkpoints/vjepa2-ac-vitg.pt
+[INFO    ][2025-12-21 17:35:47][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Loaded pretrained encoder with msg: <All keys matched successfully>
+[INFO    ][2025-12-21 17:35:47][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Loaded pretrained target encoder with msg: <All keys matched successfully>
+[INFO    ][2025-12-21 17:35:47][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Loaded pretrained predictor with msg: <All keys matched successfully>
+[INFO    ][2025-12-21 17:35:47][root                ][load_checkpoint          ] Loading checkpoint from /data/s185927/vjepa2/weights/droid/x_axis_finetune_025pct/latest.pt
+[INFO    ][2025-12-21 17:35:48][root                ][load_checkpoint          ] loaded pretrained encoder from epoch 1 with msg: <All keys matched successfully>
+[INFO    ][2025-12-21 17:35:49][root                ][load_checkpoint          ] loaded pretrained predictor from epoch 1 with msg: <All keys matched successfully>
+['encoder', 'predictor', 'opt', 'scaler', 'target_encoder', 'epoch', 'loss', 'batch_size', 'world_size', 'lr']
+[INFO    ][2025-12-21 17:35:49][root                ][load_checkpoint          ] loaded pretrained target encoder from epoch 1 with msg: <All keys matched successfully>
+[INFO    ][2025-12-21 17:35:49][root                ][load_checkpoint          ] loaded optimizers from epoch 1
+[INFO    ][2025-12-21 17:35:49][root                ][load_checkpoint          ] read-path: /data/s185927/vjepa2/weights/droid/x_axis_finetune_025pct/latest.pt
+[INFO    ][2025-12-21 17:35:49][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Initializing loader...
+[INFO    ][2025-12-21 17:35:49][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Epoch 2
+[INFO    ][2025-12-21 17:35:54][app.vjepa_droid.train_with_early_stopping][log_stats                ] [2,     0] loss: 0.578 [0.29, 0.29] [wd: 4.00e-02] [lr: 3.61e-05] [mem: 2.05e+04] [iter: 5189.9 ms] [gpu: 1577.6 ms] [data: 3612.0 ms]
+[INFO    ][2025-12-21 17:36:07][app.vjepa_droid.train_with_early_stopping][log_stats                ] [2,    10] loss: 0.570 [0.29, 0.28] [wd: 4.00e-02] [lr: 3.66e-05] [mem: 2.05e+04] [iter: 1616.8 ms] [gpu: 1287.4 ms] [data: 328.5 ms]
+[INFO    ][2025-12-21 17:36:18][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Exhausted data loaders. Refreshing...
+[INFO    ][2025-12-21 17:36:20][app.vjepa_droid.train_with_early_stopping][log_stats                ] [2,    20] loss: 0.573 [0.29, 0.28] [wd: 4.00e-02] [lr: 3.71e-05] [mem: 2.05e+04] [iter: 1493.4 ms] [gpu: 1286.5 ms] [data: 206.0 ms]
+[INFO    ][2025-12-21 17:36:33][app.vjepa_droid.train_with_early_stopping][log_stats                ] [2,    30] loss: 0.571 [0.29, 0.28] [wd: 4.00e-02] [lr: 3.77e-05] [mem: 2.05e+04] [iter: 1415.5 ms] [gpu: 1275.0 ms] [data: 139.6 ms]
+[INFO    ][2025-12-21 17:36:44][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Exhausted data loaders. Refreshing...
+[INFO    ][2025-12-21 17:36:46][app.vjepa_droid.train_with_early_stopping][log_stats                ] [2,    40] loss: 0.570 [0.29, 0.28] [wd: 4.00e-02] [lr: 3.82e-05] [mem: 2.05e+04] [iter: 1390.9 ms] [gpu: 1266.5 ms] [data: 123.5 ms]

@@ -1,0 +1,29 @@
+# Fixed probe set of 25 test trajectories for checkpoint diagnostics
+# Selected: First 25 test trajectory IDs (sorted by trajectory_index)
+# Source: /data/s185927/droid_sim/axis_aligned/x_axis/trajectory_metadata.json
+# Seed: deterministic (no random selection)
+2
+10
+11
+15
+19
+28
+38
+46
+53
+60
+61
+80
+85
+88
+97
+98
+106
+107
+119
+130
+136
+139
+140
+141
+144

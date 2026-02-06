@@ -1,0 +1,28 @@
+\subsubsection{Influence of camera viewpoint and scene geometry}
+The primary camera viewpoint used throughout the majority of experiments is deliberately chosen to closely resemble the left exocentric camera used in the DROID dataset. This design choice minimizes low-level visual mismatch and isolates representational and planning effects from trivial viewpoint discrepancies.
+
+Despite this deliberate alignment, zero-shot planning performance remains limited. This indicates that perceptual mismatch alone cannot fully explain the observed failures. To further assess the extent to which viewpoint similarity contributes to planning behavior, the effect of alternative camera angles is examined explicitly.
+
+Specifically, the experiment is repeated from two additional camera viewpoints (denoted \emph{Right cam} and \emph{High cam}) and compared against the original \emph{Left cam} configuration. Figure~\ref{fig:different_camera_views} shows the robot arm setup from these different camera angles.
+
+
+\begin{figure}
+    \centering
+    \includegraphics[width=\linewidth]{Pictures/Experiments/01_zero_shot_single_axis_reaching/camera_comparison_analysis_camera_views.png}
+    \caption{Starting frame ($x_0$) and goal frame ($x_g$) for planning along the $x$-axis, shown from three camera viewpoints denoted Left cam (similar to Figure \ref{fig:exp01_zero_shot}, Right cam, and High cam respectively.}
+
+    \label{fig:different_camera_views}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=\linewidth]{Pictures/Experiments/01_zero_shot_single_axis_reaching/camera_comparison_analysis.png}
+    \caption{Top row: Euclidean distance between end-effector position and goal position over planning steps for single-axis reaching tasks along x and y. Bottom row: mean L1 distance in V-JEPA representation space for the same tasks. The left camera (blue), which matches the viewpoint distribution in the DROID training data, reduces position error on both axes. Alternative viewpoints (right camera, high camera) fail to make progress or move away from the goal, despite the representation distance remaining relatively stable. This demonstrates that V-JEPA's world model is sensitive to camera viewpoint and performs best when the observation distribution matches training. N=10 episodes per condition; error bars show standard deviation.}
+    \label{fig:camera_view_analysis}
+\end{figure}
+
+The results in Figure~\ref{fig:camera_view_analysis} reveal a striking dependence on camera viewpoint. The left camera---aligned with the DROID training distribution---achieves consistent position error reductions: 41.5\% along $x$ (from 0.200\,m to 0.117\,m) and 75.0\% along $y$ (from 0.200\,m to 0.050\,m). In contrast, the alternative viewpoints exhibit catastrophic performance degradation. The right camera not only fails to reduce error but actively increases it: $-170\%$ along $x$ (final distance 0.540\,m, meaning the planner moves the end-effector away from the goal) and $-13\%$ along $y$ (final distance 0.226\,m). The high camera shows even more severe failure modes with $-76.5\%$ along $x$ (final distance 0.353\,m) and $-140.5\%$ along $y$ (final distance 0.481\,m).
+
+Notably, only the left camera on the $y$-axis task achieves the 0.05\,m success threshold, while all other configurations fall substantially short. The representation distance plots (bottom row) reveal an important dissociation: while the left camera shows correlated decreases in both position error and representation distance, the alternative viewpoints often show decreasing or stable representation distances despite increasing position error. For example, the right camera along $x$ shows only a modest increase in representation distance (from 0.491 to 0.511) while position error nearly triples. This suggests that minimizing representation distance does not guarantee task-relevant progress when the visual input deviates from the training distribution.
+
+These findings support the hypothesis that V-JEPA's world model has learned viewpoint-specific dynamics that do not generalize across camera angles. The model appears to encode camera-viewpoint-dependent features that conflate spatial relationships with appearance, making the learned representations brittle to viewpoint changes. This sensitivity underscores that matching the training camera distribution is necessary but not sufficient for successful zero-shot transfer.

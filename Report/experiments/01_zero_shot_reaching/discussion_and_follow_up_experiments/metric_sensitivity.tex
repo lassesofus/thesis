@@ -1,0 +1,94 @@
+\subsubsection{Metric sensitivity of latent-space planning}
+The negative results obtained with inference-time latent alignment highlight a critical sensitivity of the planning procedure to the geometric properties of the latent space. Although affine alignment successfully reduces the distributional gap between simulation and DROID embeddings, it substantially alters the scale and orientation of latent distances, leading to degraded control performance. This suggests that the choice of distance metric used as the planning energy plays a central role in determining behavior, particularly under domain shift.
+
+The planning formulation used throughout this work follows the original V-JEPA~2 setup, in which candidate action sequences are evaluated by minimizing an $\ell_1$ distance between predicted and goal latent embeddings. While this metric is effective in the in-distribution settings considered in prior work, the alignment experiment demonstrates that planning performance is highly sensitive to changes in latent geometry and scale. In particular, affine transformations that reduce the sim-to-real distributional gap can severely degrade control performance, despite bringing simulation embeddings closer to the training distribution of the action-conditioned predictor.
+
+This observation motivates a closer examination of the role played by the energy function itself, as the planning objective depends directly on latent distances whose scale and orientation were shown to be critical in the alignment experiment. If degraded zero-shot planning under sim-to-real shift is driven primarily by metric sensitivity, rather than by the absence of task-relevant information in the latent representations, then alternative similarity measures that are invariant to global scaling or variance inflation may yield more stable control behavior. Conversely, if planning remains ineffective under alternative metrics, this would provide stronger evidence that the learned latent space does not admit a control-relevant metric under domain shift.
+
+To isolate the effect of the energy function, this experiment evaluates alternative distance measures for planning while keeping the encoder, predictor, planning algorithm, and environment unchanged. No latent alignment or additional fine-tuning is applied; the experiment is conducted directly on the unaligned simulation embeddings used in the baseline zero-shot reaching setup.
+
+Three energy functions are considered for evaluating candidate action sequences during planning:
+
+\begin{enumerate}
+    \item \textbf{$\ell_1$ distance (baseline).}
+    The mean $\ell_1$ distance between predicted and goal latent embeddings, as used in the original V-JEPA~2 planning formulation,
+    \begin{equation}
+        E_{\ell_1}(z, z_g) = \frac{1}{TD} \sum_{t=1}^{T} \sum_{d=1}^{D} \left| z_{t,d} - z_{g,t,d} \right|,
+    \end{equation}
+    where $z, z_g \in \mathbb{R}^{T \times D}$ denote the token-wise latent embeddings of the predicted and goal observations.
+
+    \item \textbf{Cosine distance.}
+    A scale-invariant similarity measure that depends only on the angular alignment between embeddings,
+    \begin{equation}
+        E_{\cos}(z, z_g) = \frac{1}{T} \sum_{t=1}^{T} \left( 1 - \frac{\langle z_t, z_{g,t} \rangle}{\|z_t\|_2 \, \|z_{g,t}\|_2 + \epsilon} \right),
+    \end{equation}
+    where $\epsilon$ is a small constant added for numerical stability. This metric is invariant to global rescaling of latent representations and tests whether directional alignment in latent space is sufficient for effective planning.
+
+    \item \textbf{Normalized $\ell_1$ distance.}
+    A scale-corrected variant of the $\ell_1$ distance in which latent embeddings are normalized using per-dimension statistics computed from DROID embeddings,
+    \begin{equation}
+        \hat{z} = \frac{z - \mu_{\text{DROID}}}{\sigma_{\text{DROID}}},
+        \qquad
+        E_{\text{norm-}\ell_1}(z, z_g) = \frac{1}{TD} \sum_{t,d} \left| \hat{z}_{t,d} - \hat{z}_{g,t,d} \right|,
+    \end{equation}
+    where $\mu_{\text{DROID}}$ and $\sigma_{\text{DROID}}$ denote the per-dimension mean and standard deviation of mean-pooled DROID embeddings. This metric preserves the structure of the baseline $\ell_1$ objective while removing global scale differences between latent dimensions.
+\end{enumerate}
+
+Planning performance under each energy function is evaluated using the same zero-shot reaching protocol as in Section~\ref{sec:zero-shot_reaching}. The robot is tasked with single-axis reaching along the $x$, $y$, and $z$ dimensions with 20\,cm goal offsets, using five planning steps and identical CEM hyperparameters. All experiments are conducted from the same camera viewpoint and with the same random seeds as the baseline. For each axis and metric, $N=10$ episodes are evaluated.
+
+Figure~\ref{fig:metric_sensitivity_combined} presents the Cartesian error trajectories (top row) and latent distance trajectories (bottom row) over planning steps for each energy metric. All three metrics exhibit qualitatively similar behavior: error decreases over the first few planning steps but fails to reach the 5\,cm success threshold on any axis. The $y$-axis shows the strongest performance across all metrics, with final errors near the 10\,cm threshold. Notably, all metrics show decreasing latent distance over planning steps, indicating that the CEM optimizer successfully minimizes the respective energy functions. However, the disconnect between decreasing latent distance and limited Cartesian error reduction suggests that the latent space geometry does not reliably encode task-relevant information under domain shift.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{/home/s185927/thesis/experiments/01_zero_shot_single_axis_reaching/follow_up_experiments/metric_sensitivity/plots/combined_analysis.png}
+    \caption{Planning performance comparison across energy metrics. \textbf{Top row:} Cartesian error versus planning step for $\ell_1$ (blue), cosine (orange), and normalized $\ell_1$ (green). The dashed red line marks the 5\,cm success threshold. \textbf{Bottom row:} Latent distance between current and goal embeddings over planning steps. Error bars indicate $\pm 1$ standard deviation across $N=10$ episodes. All metrics show decreasing latent distance, yet Cartesian error reduction plateaus above the success threshold.}
+    \label{fig:metric_sensitivity_combined}
+\end{figure}
+
+Table~\ref{tab:metric_sensitivity_results} summarizes the final Cartesian errors and success rates for each condition. The $\ell_1$ baseline achieves final errors of $16.2 \pm 0.4$\,cm ($x$-axis), $9.2 \pm 0.2$\,cm ($y$-axis), and $15.3 \pm 5.4$\,cm ($z$-axis). Cosine distance yields comparable or slightly worse performance: $16.5 \pm 0.3$\,cm ($x$), $9.7 \pm 0.2$\,cm ($y$), and $20.8 \pm 2.2$\,cm ($z$). Normalized $\ell_1$ produces the most consistent results with reduced variance: $16.0 \pm 0.4$\,cm ($x$), $9.3 \pm 0.3$\,cm ($y$), and $11.1 \pm 0.8$\,cm ($z$).
+
+\begin{table}[H]
+    \centering
+    \caption{Final Cartesian error (mean $\pm$ std in cm) and success rates for each energy metric and reaching axis. Success is defined as final error $<5$\,cm (strict) or $<10$\,cm (relaxed).}
+    \label{tab:metric_sensitivity_results}
+    \begin{tabular}{llccc}
+        \toprule
+        \textbf{Metric} & \textbf{Axis} & \textbf{Final Error (cm)} & \textbf{Success (5cm)} & \textbf{Success (10cm)} \\
+        \midrule
+        $\ell_1$ (baseline) & $x$ & $16.2 \pm 0.4$ & 0/10 & 0/10 \\
+                            & $y$ & $9.2 \pm 0.2$ & 0/10 & 10/10 \\
+                            & $z$ & $15.3 \pm 5.4$ & 0/10 & 1/10 \\
+        \midrule
+        Cosine              & $x$ & $16.5 \pm 0.3$ & 0/10 & 0/10 \\
+                            & $y$ & $9.7 \pm 0.2$ & 0/10 & 10/10 \\
+                            & $z$ & $20.8 \pm 2.2$ & 0/10 & 0/10 \\
+        \midrule
+        Normalized $\ell_1$ & $x$ & $16.0 \pm 0.4$ & 0/10 & 0/10 \\
+                            & $y$ & $9.3 \pm 0.3$ & 0/10 & 10/10 \\
+                            & $z$ & $11.1 \pm 0.8$ & 0/10 & 1/10 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+Figure~\ref{fig:metric_sensitivity_distribution} shows the distribution of final errors across episodes. The violin plots reveal that all metrics produce similarly distributed outcomes, with the $y$-axis consistently achieving the lowest errors. Notably, normalized $\ell_1$ exhibits substantially reduced variance on the $z$-axis compared to both $\ell_1$ and cosine, though mean performance remains above the success threshold.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{/home/s185927/thesis/experiments/01_zero_shot_single_axis_reaching/follow_up_experiments/metric_sensitivity/plots/final_distance_distribution.png}
+    \caption{Distribution of final Cartesian errors across episodes for each energy metric. Violin plots show the kernel density estimate with embedded box plots. The horizontal dashed line indicates the 5\,cm success threshold. Normalized $\ell_1$ shows reduced variance on the $z$-axis.}
+    \label{fig:metric_sensitivity_distribution}
+\end{figure}
+
+These results support the following conclusions:
+
+\begin{itemize}
+    \item \textbf{No metric substantially improves success rates.} None of the three energy functions achieves the 5\,cm success threshold on any axis. The 10\,cm relaxed threshold is met only on the $y$-axis, regardless of metric choice. This indicates that the fundamental limitation lies in the latent representations rather than the choice of distance metric.
+
+    \item \textbf{Normalized $\ell_1$ improves consistency.} While mean performance is similar across metrics, normalized $\ell_1$ produces more consistent outcomes with reduced variance, particularly on the $z$-axis (std of 0.8\,cm vs.\ 5.4\,cm for baseline $\ell_1$). This suggests that per-dimension normalization removes some spurious variation without fundamentally changing planning behavior.
+
+    \item \textbf{Cosine distance does not help.} Scale-invariant cosine distance performs comparably to or worse than the baseline, indicating that directional alignment in latent space is not sufficient for effective control. The $z$-axis performance degrades from $15.3$\,cm to $20.8$\,cm under cosine distance.
+
+    \item \textbf{Latent optimization succeeds, physical progress stalls.} All metrics show decreasing latent distance over planning steps, yet Cartesian error reduction plateaus well above the success threshold. This disconnect indicates that minimizing latent distance does not reliably minimize physical distance under sim-to-real domain shift.
+\end{itemize}
+
+These findings strengthen the conclusion that zero-shot planning failures are driven primarily by representational inadequacy rather than metric sensitivity. The V-JEPA~2 latent space, when applied to out-of-distribution simulation observations, does not provide a control-relevant metric regardless of how distances are computed. This motivates exploration of alternative approaches such as encoder fine-tuning on simulation data or goal representations grounded in modalities less sensitive to visual domain shift.

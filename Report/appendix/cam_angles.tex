@@ -1,0 +1,30 @@
+\section{Influence of camera viewpoint and scene geometry}
+\label{app:zeros-shot-cam_angle}
+The primary camera viewpoint used throughout the majority of experiments is deliberately chosen to closely resemble the left exocentric camera used in the DROID dataset. This design choice minimizes low-level visual mismatch and isolates representational and planning effects from trivial viewpoint discrepancies.
+
+To further assess the extent to which viewpoint similarity contributes to planning behavior, the effect of alternative camera angles is examined explicitly.
+
+Specifically, the experiment is repeated from two additional camera viewpoints (denoted \emph{Front cam} and \emph{High cam}) and compared against the original \emph{Left cam} configuration. Figure~\ref{fig:different_camera_views} shows the robot arm setup from these different camera angles.
+
+
+\begin{figure}
+    \centering
+    \includegraphics[width=\linewidth]{Pictures/Experiments/01_zero_shot_single_axis_reaching/camera_comparison_analysis_camera_views.png}
+    \caption{Starting frame ($x_0$) and goal frame ($x_g$) for planning along the $x$-axis, shown from three camera viewpoints: Left cam (matching the DROID training distribution), Front cam, and High cam.}
+    \label{fig:different_camera_views}
+\end{figure}
+
+
+The results in Figure~\ref{fig:camera_view_analysis} reveal a striking dependence on camera viewpoint. The left camera, aligned with the DROID training distribution, achieves consistent position error reductions across all axes: 66.1\% along $x$ (from 0.200\,m to 0.068\,m), 88.9\% along $y$ (from 0.200\,m to 0.022\,m), and 84.2\% along $z$ (from 0.200\,m to 0.032\,m). In contrast, the alternative viewpoints exhibit catastrophic performance degradation. The front camera not only fails to reduce error but actively increases it: $-266\%$ along $x$ (final distance 0.732\,m, meaning the planner moves the end-effector far away from the goal), $-32\%$ along $y$ (final distance 0.263\,m), and $-111\%$ along $z$ (final distance 0.421\,m). The high camera shows similarly severe failure modes along horizontal axes with $-136\%$ along $x$ (final distance 0.472\,m) and $-160\%$ along $y$ (final distance 0.519\,m), though it achieves partial success along $z$ with 57.3\% reduction (final distance 0.085\,m).
+
+Notably, the left camera achieves the 0.05\,m success threshold on both $y$-axis (10/10 episodes) and $z$-axis (10/10 episodes) tasks, while all other camera-axis configurations fall substantially short. The representation distance plots (bottom row) reveal an important dissociation: while the left camera shows generally correlated decreases in both position error and representation distance, the alternative viewpoints often show decreasing or stable representation distances despite increasing position error. This suggests that minimizing representation distance does not guarantee task-relevant progress when the visual input deviates from the training distribution.
+
+These findings support the hypothesis that V-JEPA's world model has learned viewpoint-specific dynamics that do not generalize across camera angles. The model appears to encode camera-viewpoint-dependent features that conflate spatial relationships with appearance, making the learned representations brittle to viewpoint changes. This sensitivity underscores that matching the training camera distribution is necessary but not sufficient for successful zero-shot transfer.
+
+
+\begin{figure}
+    \centering
+    \includegraphics[width=\linewidth]{Pictures/Experiments/01_zero_shot_single_axis_reaching/camera_comparison_analysis.png}
+    \caption{Top row: Euclidean distance between end-effector position and goal position over planning steps for single-axis reaching tasks along $x$, $y$, and $z$. Bottom row: mean $\ell_1$ distance in V-JEPA representation space for the same tasks. The Left cam (blue), which matches the viewpoint distribution in the DROID training data, consistently reduces position error across all axes. Alternative viewpoints (Front cam, High cam) fail to make progress or move away from the goal, despite representation distance decreasing in some cases. Error bars indicate standard deviation across $N=10$ episodes.}
+    \label{fig:camera_view_analysis}
+\end{figure}

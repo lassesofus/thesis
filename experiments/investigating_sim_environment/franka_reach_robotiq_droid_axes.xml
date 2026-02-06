@@ -1,0 +1,75 @@
+<mujoco model="Franka Reach RobotiQ with DROID Axes">
+<!-- =================================================
+    Based on franka_reach_robotiq_v0.xml with DROID coordinate frame visualization
+    DROID Frame: X=Red (RoboHive Y), Y=Green (RoboHive X), Z=Blue (RoboHive Z)
+====================================================== -->
+    <compiler angle="radian" meshdir="/home/s185927/thesis/robohive/robohive/robohive/simhive/franka_sim" texturedir="/home/s185927/thesis/robohive/robohive/robohive/simhive/franka_sim"/>
+
+    <size njmax='1000' nconmax='1000'/>
+
+    <include file="/home/s185927/thesis/experiments/investigating_sim_environment/room_scene_custom.xml"/>
+    <include file="/home/s185927/thesis/robohive/robohive/robohive/simhive/franka_sim/assets/assets.xml"/>
+    <include file="/home/s185927/thesis/robohive/robohive/robohive/simhive/furniture_sim/simpleTable/simpleTable_asset.xml"/>
+    <include file="/home/s185927/thesis/robohive/robohive/robohive/simhive/franka_sim/assets/actuator0.xml"/>
+    <!-- RobotiQ 2F-85 gripper assets (replaces Franka gripper) -->
+    <include file="/home/s185927/thesis/robohive/robohive/robohive/simhive/robotiq_sim/assets/assets.xml"/>
+
+    <worldbody>
+
+        <!-- Original cameras -->
+        <camera name='left_cam_far' pos='-0.691 0.147 1.121' xyaxes='0.231 -0.973 -0.000 0.050 0.012 0.999'/>
+        <!-- Medium distance camera similar to real robot setup -->
+        <camera name='left_cam' pos='-0.58 0.20 1.16' xyaxes='0.30 -0.954 0.0 0.05 0.02 0.999'/>
+
+        <!-- Parameterized cameras for camera sensitivity experiments -->
+        <camera name='front_cam' pos='0.869 0.475 1.233' xyaxes='0.000 1.000 -0.000 -0.259 0.000 0.966'/>
+        <camera name='right_cam' pos='-0.000 -0.394 1.233' xyaxes='1.000 -0.000 0.000 0.000 0.259 0.966'/>
+        <camera name='rear_cam' pos='-1.8 -1.5 1.7' xyaxes='0.643 -0.766 0.000 0.262 0.220 0.940'/>
+        <camera name='back_cam' pos='-0.869 0.475 1.233' xyaxes='-0.000 -1.000 0.000 0.259 -0.000 0.966'/>
+        <camera name='top_cam' pos='0.000 0.614 1.788' xyaxes='-1.000 0.000 0.000 -0.000 -0.985 0.174'/>
+        <camera name='front_right_cam' pos='0.577 -0.102 1.380' xyaxes='0.707 0.707 -0.000 -0.299 0.299 0.906'/>
+        <camera name='back_left_cam' pos='-0.577 1.052 1.380' xyaxes='-0.707 -0.707 0.000 0.299 -0.299 0.906'/>
+        <camera name='left_high_cam' pos='-0.218 1.073 1.636' xyaxes='-0.940 -0.342 0.000 0.242 -0.664 0.707'/>
+        <camera name='left_low_cam' pos='-0.308 1.321 1.000' xyaxes='-0.940 -0.342 0.000 0.000 0.000 1.000'/>
+
+        <site name='workspace' type='box' size='.6 .375 .25' pos='0 0.475 1.0' group='3' rgba='0 0 .4 .2'/>
+
+        <!-- Robot with RobotiQ gripper -->
+        <body pos='0 0 .775' euler='0 0 1.57'>
+            <geom type='cylinder' size='.120 .4' pos='-.04 0 -.4'/>
+            <include file="/home/s185927/thesis/robohive/robohive/robohive/simhive/franka_sim/assets/chain0_nogripper.xml"/>
+        </body>
+
+        <!-- RobotiQ 2F-85 gripper - will be reparented to panda0_link7 at runtime -->
+        <body name="ee_mount" pos="0 0 0.11" euler="0 0 0">
+            <include file="/home/s185927/thesis/robohive/robohive/robohive/simhive/robotiq_sim/assets/chain.xml"/>
+        </body>
+
+        <!-- simple Table -->
+        <body pos='0 0.475 0'>
+            <include file="/home/s185927/thesis/robohive/robohive/robohive/simhive/furniture_sim/simpleTable/simpleMarbleTable_body.xml"/>
+        </body>
+
+        <!-- Target site (invisible by default) -->
+        <site name='target' type='sphere' size='.1' pos='0 0.475 1.0' group='1' rgba='0 0 0 0'/>
+
+        <!-- DROID Coordinate Frame Visualization at Workspace Center (0, 0.475, 1.0) -->
+        <!-- DROID Frame: X=Red (RoboHive +Y), Y=Green (RoboHive -X), Z=Blue (RoboHive +Z) -->
+
+        <body name='droid_axes' pos='0 0.475 1.0'>
+            <!-- DROID X-axis (Red): Points along RoboHive +Y direction -->
+            <geom name='droid_x_shaft' type='cylinder' size='0.008 0.12' pos='0 0.12 0' euler='1.5708 0 0' rgba='1 0 0 1' contype='0' conaffinity='0'/>
+
+            <!-- DROID Y-axis (Green): Points along RoboHive -X direction -->
+            <geom name='droid_y_shaft' type='cylinder' size='0.008 0.12' pos='-0.12 0 0' euler='0 1.5708 0' rgba='0 1 0 1' contype='0' conaffinity='0'/>
+
+            <!-- DROID Z-axis (Blue): Points along RoboHive +Z direction -->
+            <geom name='droid_z_shaft' type='cylinder' size='0.008 0.12' pos='0 0 0.12' rgba='0 0 1 1' contype='0' conaffinity='0'/>
+
+            <!-- Origin sphere -->
+            <geom name='droid_origin' type='sphere' size='0.015' pos='0 0 0' rgba='1 1 1 1' contype='0' conaffinity='0'/>
+        </body>
+
+    </worldbody>
+
+</mujoco>

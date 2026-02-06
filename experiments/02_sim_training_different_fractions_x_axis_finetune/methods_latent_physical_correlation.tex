@@ -1,0 +1,27 @@
+\subsection{Latent-Physical Distance Correlation}
+\label{sec:methods-latent-physical-correlation}
+
+To investigate whether the V-JEPA 2 encoder learns representations that reflect physical proximity in the robot's workspace, we analyzed the correlation between distances in the encoder's latent space and Euclidean distances in 3D Cartesian space.
+
+\paragraph{Dataset.}
+We utilized 50 held-out test trajectories from the simulated axis-aligned reaching dataset, comprising a total of 6,600 frame-goal pairs. Each trajectory consists of video frames captured from an external camera observing a Franka Emika Panda robot arm, along with corresponding end-effector positions recorded at each timestep. These trajectories were not used during model training or validation.
+
+\paragraph{Procedure.}
+For each trajectory, we designated the final frame as the goal state. For every preceding frame in the trajectory, we computed two distance measures:
+
+\begin{enumerate}
+    \item \textbf{Physical distance:} The Euclidean distance between the current end-effector position $\mathbf{p}_t \in \mathbb{R}^3$ and the goal position $\mathbf{p}_{\text{goal}} \in \mathbb{R}^3$:
+    \begin{equation}
+        d_{\text{physical}} = \|\mathbf{p}_t - \mathbf{p}_{\text{goal}}\|_2
+    \end{equation}
+
+    \item \textbf{Latent distance:} Both the current frame $I_t$ and goal frame $I_{\text{goal}}$ were encoded through the V-JEPA 2 encoder (ViT-G architecture), yielding token representations $\mathbf{z}_t, \mathbf{z}_{\text{goal}} \in \mathbb{R}^{N \times D}$, where $N = 256$ tokens and $D = 1408$ dimensions. After applying layer normalization, we computed the mean L1 distance:
+    \begin{equation}
+        d_{\text{latent}} = \frac{1}{N \cdot D} \sum_{i=1}^{N} \sum_{j=1}^{D} |z_{t,ij} - z_{\text{goal},ij}|
+    \end{equation}
+\end{enumerate}
+
+This latent distance metric matches the energy function used for action selection in the goal-conditioned control framework, where actions are chosen to minimize the predicted L1 distance to the goal representation.
+
+\paragraph{Analysis.}
+We report the Pearson correlation coefficient $r$ between the physical distance and the latent distance across all frame-goal pairs. A strong positive correlation would indicate that the encoder's representations preserve information about spatial relationships in the robot's workspace, which is a desirable property for goal-conditioned visuomotor control.

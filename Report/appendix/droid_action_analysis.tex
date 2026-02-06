@@ -1,0 +1,79 @@
+\chapter{DROID action distribution analysis}
+\label{app:droid_action_analysis}
+
+To assess whether the off-axis motions observed during zero-shot planning can be explained by biases in the training action distribution, the statistics of Cartesian actions in the DROID dataset were analyzed. A random subset of 5{,}000 trajectories from the DROID 1.0.1 release was sampled, corresponding to approximately 1.24 million action vectors. The analysis focuses on correlations and coupling patterns between translational velocity components.
+
+\subsection{Action correlations}
+
+Table~\ref{tab:droid_action_correlation} reports the Pearson correlation coefficients between the translational velocity components $(dx, dy, dz)$. Overall, pairwise correlations are weak, with one notable exception: a moderate negative correlation between $dx$ and $dz$ ($r = -0.231$). This indicates that forward motion in the DROID coordinate frame is often accompanied by downward motion.
+
+\begin{table}[h]
+\centering
+\caption{Correlation matrix for DROID translational velocities.}
+\label{tab:droid_action_correlation}
+\begin{tabular}{lccc}
+\toprule
+ & dx & dy & dz \\
+\midrule
+dx & +1.000 & +0.008 & $-$0.231 \\
+dy & +0.008 & +1.000 & $-$0.001 \\
+dz & $-$0.231 & $-$0.001 & +1.000 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+This pattern is consistent with common manipulation behaviors, such as reaching forward and down toward objects placed on a table surface. In contrast, correlations involving the $y$-axis are negligible, suggesting that lateral motion is largely decoupled from the other axes at the level of marginal statistics.
+
+\subsection{Conditional coupling between axes}
+
+To further characterize multi-axis coupling, action statistics were examined under conditions where motion along a single axis dominates. Specifically, action vectors were selected where the magnitude of one displacement component exceeded 5\,mm and was larger than the magnitudes of the other two components. Table~\ref{tab:droid_conditional} summarizes the mean absolute displacements under these conditions.
+
+\begin{table}[h]
+\centering
+\caption{Mean displacements when one axis dominates ($|v_i| > 5$\,mm and $|v_i| > |v_j|$ for $j \neq i$).}
+\label{tab:droid_conditional}
+\begin{tabular}{lcccc}
+\toprule
+Dominant axis & Mean $|$dx$|$ (mm) & Mean $|$dy$|$ (mm) & Mean $|$dz$|$ (mm) & Off-axis ratio \\
+\midrule
+x-axis (n=101k) & 9.2 & 3.6 & 3.9 & 0.82 \\
+y-axis (n=147k) & 3.6 & 10.6 & 4.0 & 0.71 \\
+z-axis (n=232k) & 3.3 & 3.3 & 9.9 & 0.67 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Across all three axes, substantial off-axis motion is observed. The ratio of off-axis magnitude to primary-axis magnitude ranges from 0.67 to 0.82, indicating that even when motion is dominated by a single axis, significant coupled movement along other axes is typical. This suggests that the DROID dataset largely consists of coordinated multi-axis motions rather than isolated single-axis displacements.
+
+A closer examination of forward $x$-axis motion ($dx > 5$\,mm) reveals a more specific structure. Among these actions, 58.6\% include a downward $z$-component ($dz < -2.5$\,mm), with a mean $dz$ of $-4$\,mm. In contrast, the corresponding mean $dy$ is close to zero, indicating minimal coupling between $x$ and $y$ motion in the raw action statistics. Thus, while $x$--$z$ coupling is common in the dataset, $x$--$y$ coupling is not strongly supported by marginal action correlations.
+
+\subsection{Comparison with planned actions}
+
+The planned actions produced during zero-shot $x$-axis reaching differ qualitatively from the dominant coupling patterns observed in the DROID dataset. Table~\ref{tab:planned_actions_xaxis} reports the mean planned actions across 10 episodes, where the task requires movement primarily along the positive $x$-direction.
+
+\begin{table}[h]
+\centering
+\caption{Mean planned actions for x-axis reaching (goal at +20\,cm along x).}
+\label{tab:planned_actions_xaxis}
+\begin{tabular}{lccc}
+\toprule
+Step & dx (m) & dy (m) & dz (m) \\
+\midrule
+0 & +0.075 & +0.069 & +0.073 \\
+1 & +0.072 & +0.074 & $-$0.070 \\
+2 & +0.024 & $-$0.021 & +0.002 \\
+3 & +0.018 & $-$0.022 & +0.001 \\
+4 & +0.016 & $-$0.033 & +0.001 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+In the first two planning steps, the optimized actions saturate or nearly saturate the maximum allowed action magnitude ($\pm$7.5\,cm) simultaneously along multiple axes. This behavior suggests that the latent-space energy-minimizing action lies outside the feasible action region, causing the planner to select boundary actions in several directions at once. In subsequent steps, the magnitudes of all components decrease substantially, but the $y$-component remains comparable to or larger than the task-aligned $x$-component, indicating persistent off-axis motion even as overall action magnitudes diminish.
+
+Notably, while the DROID dataset exhibits a moderate negative correlation between $dx$ and $dz$ (typical of reaching forward and down toward objects), the planned actions show a different pattern: after step~1, the $z$-component becomes negligible while substantial $y$-motion persists. This $x$--$y$ coupling is not predicted by the marginal action statistics, which show near-zero correlation between these axes. The discrepancy suggests that off-axis movements observed during planning do not arise directly from correlations in the action distribution, but rather from how the action-conditioned predictor has learned to associate visual changes with action patterns, shaping a latent-space energy landscape in which coupled multi-axis motions appear locally optimal even when the task requires near-pure single-axis displacement.
+
+\subsection{Summary}
+
+The DROID dataset exhibits pervasive multi-axis coupling in manipulation actions, with off-axis motion magnitudes typically amounting to 67--82\% of the primary-axis magnitude. While a moderate negative correlation between forward and downward motion ($dx$--$dz$) is present in the training data, the off-axis movements produced during zero-shot planning follow a different pattern: persistent $x$--$y$ coupling with minimal $z$-motion in later planning steps. This $x$--$y$ coupling is not predicted by the marginal action statistics, which show near-zero correlation between these axes.
+
+These findings indicate that the off-axis behavior observed during planning is not a direct consequence of simple action correlations in the training data. Rather, it reflects how the learned action-conditioned dynamics and visual representation jointly structure the latent-space objective, favoring coupled action patterns even when they are misaligned with the intended task geometry.

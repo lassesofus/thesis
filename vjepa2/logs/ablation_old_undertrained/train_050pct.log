@@ -1,0 +1,359 @@
+/home/s185927/.conda/envs/vjepa2-312/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py:2249: UnsupportedFieldAttributeWarning: The 'repr' attribute with value False was provided to the `Field()` function, which has no effect in the context it was used. 'repr' is field-specific metadata, and can only be attached to a model field using `Annotated` metadata or by assignment. This may have happened because an `Annotated` type alias using the `type` statement was used, or if the `Field()` function was attached to a single member of a union type.
+  warnings.warn(
+/home/s185927/.conda/envs/vjepa2-312/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py:2249: UnsupportedFieldAttributeWarning: The 'frozen' attribute with value True was provided to the `Field()` function, which has no effect in the context it was used. 'frozen' is field-specific metadata, and can only be attached to a model field using `Annotated` metadata or by assignment. This may have happened because an `Annotated` type alias using the `type` statement was used, or if the `Field()` function was attached to a single member of a union type.
+  warnings.warn(
+Loading config: /home/s185927/thesis/vjepa2/configs/train/vitg16/ablation/droid-256px-8f_050pct.yaml
+
+Early Stopping Configuration:
+  Patience: 3 epochs
+  Validation frequency: every 1 epoch(s)
+  Min delta: 0.0001
+
+Output folder: /data/s185927/vjepa2/weights/droid/4.8.vitg16-256px-8f_050pct
+
+Starting training with early stopping...
+[INFO    ][2025-11-19 20:15:45][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Early stopping enabled: patience=3, min_delta=0.0001, val_freq=1
+[INFO    ][2025-11-19 20:15:45][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] which_dtype='bfloat16'
+[INFO    ][2025-11-19 20:15:45][root                ][init_distributed         ] SLURM vars not set (distributed training not available)
+[INFO    ][2025-11-19 20:15:45][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Initialized (rank/world-size) 0/1
+[INFO    ][2025-11-19 20:15:57][root                ][init_video_model         ] VisionTransformer(
+  (patch_embed): PatchEmbed3D(
+    (proj): Conv3d(3, 1408, kernel_size=(2, 16, 16), stride=(2, 16, 16))
+  )
+  (blocks): ModuleList(
+    (0-39): 40 x Block(
+      (norm1): LayerNorm((1408,), eps=1e-06, elementwise_affine=True)
+      (attn): RoPEAttention(
+        (qkv): Linear(in_features=1408, out_features=4224, bias=True)
+        (attn_drop): Dropout(p=0.0, inplace=False)
+        (proj): Linear(in_features=1408, out_features=1408, bias=True)
+        (proj_drop): Dropout(p=0.0, inplace=False)
+      )
+      (drop_path): Identity()
+      (norm2): LayerNorm((1408,), eps=1e-06, elementwise_affine=True)
+      (mlp): MLP(
+        (fc1): Linear(in_features=1408, out_features=6144, bias=True)
+        (act): GELU(approximate='none')
+        (fc2): Linear(in_features=6144, out_features=1408, bias=True)
+        (drop): Dropout(p=0.0, inplace=False)
+      )
+    )
+  )
+  (norm): LayerNorm((1408,), eps=1e-06, elementwise_affine=True)
+)
+[INFO    ][2025-11-19 20:15:57][root                ][init_video_model         ] VisionTransformerPredictorAC(
+  (predictor_embed): Linear(in_features=1408, out_features=1024, bias=True)
+  (action_encoder): Linear(in_features=7, out_features=1024, bias=True)
+  (state_encoder): Linear(in_features=7, out_features=1024, bias=True)
+  (extrinsics_encoder): Linear(in_features=6, out_features=1024, bias=True)
+  (predictor_blocks): ModuleList(
+    (0-23): 24 x ACBlock(
+      (norm1): LayerNorm((1024,), eps=1e-06, elementwise_affine=True)
+      (attn): ACRoPEAttention(
+        (qkv): Linear(in_features=1024, out_features=3072, bias=True)
+        (attn_drop): Dropout(p=0.0, inplace=False)
+        (proj): Linear(in_features=1024, out_features=1024, bias=True)
+        (proj_drop): Dropout(p=0.0, inplace=False)
+      )
+      (drop_path): Identity()
+      (norm2): LayerNorm((1024,), eps=1e-06, elementwise_affine=True)
+      (mlp): MLP(
+        (fc1): Linear(in_features=1024, out_features=4096, bias=True)
+        (act): GELU(approximate='none')
+        (fc2): Linear(in_features=4096, out_features=1024, bias=True)
+        (drop): Dropout(p=0.0, inplace=False)
+      )
+    )
+  )
+  (predictor_norm): LayerNorm((1024,), eps=1e-06, elementwise_affine=True)
+  (predictor_proj): Linear(in_features=1024, out_features=1408, bias=True)
+)
+[INFO    ][2025-11-19 20:15:57][root                ][init_video_model         ] Encoder number of parameters: 1012173952
+[INFO    ][2025-11-19 20:15:57][root                ][init_video_model         ] Predictor number of parameters: 305220992
+[INFO    ][2025-11-19 20:15:57][root                ][init_data                ] VideoDataset unsupervised data loader created
+[INFO    ][2025-11-19 20:15:57][root                ][init_data                ] VideoDataset unsupervised data loader created
+[INFO    ][2025-11-19 20:15:57][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Validation loader created with 20 batches
+[INFO    ][2025-11-19 20:15:57][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] iterations per epoch/dataset length: 300/40
+[INFO    ][2025-11-19 20:15:57][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Single GPU mode - not using DistributedDataParallel
+[INFO    ][2025-11-19 20:15:57][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Loading pretrained weights (single GPU mode) from /data/s185927/vjepa2/weights/vitg-384.pt
+[INFO    ][2025-11-19 20:16:00][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Loaded pretrained encoder with msg: <All keys matched successfully>
+[INFO    ][2025-11-19 20:16:00][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Loaded pretrained target encoder with msg: <All keys matched successfully>
+[INFO    ][2025-11-19 20:16:00][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Initializing loader...
+[INFO    ][2025-11-19 20:16:00][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Epoch 1
+/home/s185927/.conda/envs/vjepa2-312/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py:2249: UnsupportedFieldAttributeWarning: The 'repr' attribute with value False was provided to the `Field()` function, which has no effect in the context it was used. 'repr' is field-specific metadata, and can only be attached to a model field using `Annotated` metadata or by assignment. This may have happened because an `Annotated` type alias using the `type` statement was used, or if the `Field()` function was attached to a single member of a union type.
+  warnings.warn(
+/home/s185927/.conda/envs/vjepa2-312/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py:2249: UnsupportedFieldAttributeWarning: The 'frozen' attribute with value True was provided to the `Field()` function, which has no effect in the context it was used. 'frozen' is field-specific metadata, and can only be attached to a model field using `Annotated` metadata or by assignment. This may have happened because an `Annotated` type alias using the `type` statement was used, or if the `Field()` function was attached to a single member of a union type.
+  warnings.warn(
+/home/s185927/.conda/envs/vjepa2-312/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py:2249: UnsupportedFieldAttributeWarning: The 'repr' attribute with value False was provided to the `Field()` function, which has no effect in the context it was used. 'repr' is field-specific metadata, and can only be attached to a model field using `Annotated` metadata or by assignment. This may have happened because an `Annotated` type alias using the `type` statement was used, or if the `Field()` function was attached to a single member of a union type.
+  warnings.warn(
+/home/s185927/.conda/envs/vjepa2-312/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py:2249: UnsupportedFieldAttributeWarning: The 'frozen' attribute with value True was provided to the `Field()` function, which has no effect in the context it was used. 'frozen' is field-specific metadata, and can only be attached to a model field using `Annotated` metadata or by assignment. This may have happened because an `Annotated` type alias using the `type` statement was used, or if the `Field()` function was attached to a single member of a union type.
+  warnings.warn(
+/home/s185927/.conda/envs/vjepa2-312/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py:2249: UnsupportedFieldAttributeWarning: The 'repr' attribute with value False was provided to the `Field()` function, which has no effect in the context it was used. 'repr' is field-specific metadata, and can only be attached to a model field using `Annotated` metadata or by assignment. This may have happened because an `Annotated` type alias using the `type` statement was used, or if the `Field()` function was attached to a single member of a union type.
+  warnings.warn(
+/home/s185927/.conda/envs/vjepa2-312/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py:2249: UnsupportedFieldAttributeWarning: The 'frozen' attribute with value True was provided to the `Field()` function, which has no effect in the context it was used. 'frozen' is field-specific metadata, and can only be attached to a model field using `Annotated` metadata or by assignment. This may have happened because an `Annotated` type alias using the `type` statement was used, or if the `Field()` function was attached to a single member of a union type.
+  warnings.warn(
+/home/s185927/.conda/envs/vjepa2-312/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py:2249: UnsupportedFieldAttributeWarning: The 'repr' attribute with value False was provided to the `Field()` function, which has no effect in the context it was used. 'repr' is field-specific metadata, and can only be attached to a model field using `Annotated` metadata or by assignment. This may have happened because an `Annotated` type alias using the `type` statement was used, or if the `Field()` function was attached to a single member of a union type.
+  warnings.warn(
+/home/s185927/.conda/envs/vjepa2-312/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py:2249: UnsupportedFieldAttributeWarning: The 'frozen' attribute with value True was provided to the `Field()` function, which has no effect in the context it was used. 'frozen' is field-specific metadata, and can only be attached to a model field using `Annotated` metadata or by assignment. This may have happened because an `Annotated` type alias using the `type` statement was used, or if the `Field()` function was attached to a single member of a union type.
+  warnings.warn(
+/home/s185927/.conda/envs/vjepa2-312/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py:2249: UnsupportedFieldAttributeWarning: The 'repr' attribute with value False was provided to the `Field()` function, which has no effect in the context it was used. 'repr' is field-specific metadata, and can only be attached to a model field using `Annotated` metadata or by assignment. This may have happened because an `Annotated` type alias using the `type` statement was used, or if the `Field()` function was attached to a single member of a union type.
+  warnings.warn(
+/home/s185927/.conda/envs/vjepa2-312/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py:2249: UnsupportedFieldAttributeWarning: The 'frozen' attribute with value True was provided to the `Field()` function, which has no effect in the context it was used. 'frozen' is field-specific metadata, and can only be attached to a model field using `Annotated` metadata or by assignment. This may have happened because an `Annotated` type alias using the `type` statement was used, or if the `Field()` function was attached to a single member of a union type.
+  warnings.warn(
+/home/s185927/.conda/envs/vjepa2-312/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py:2249: UnsupportedFieldAttributeWarning: The 'repr' attribute with value False was provided to the `Field()` function, which has no effect in the context it was used. 'repr' is field-specific metadata, and can only be attached to a model field using `Annotated` metadata or by assignment. This may have happened because an `Annotated` type alias using the `type` statement was used, or if the `Field()` function was attached to a single member of a union type.
+  warnings.warn(
+/home/s185927/.conda/envs/vjepa2-312/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py:2249: UnsupportedFieldAttributeWarning: The 'frozen' attribute with value True was provided to the `Field()` function, which has no effect in the context it was used. 'frozen' is field-specific metadata, and can only be attached to a model field using `Annotated` metadata or by assignment. This may have happened because an `Annotated` type alias using the `type` statement was used, or if the `Field()` function was attached to a single member of a union type.
+  warnings.warn(
+/home/s185927/.conda/envs/vjepa2-312/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py:2249: UnsupportedFieldAttributeWarning: The 'repr' attribute with value False was provided to the `Field()` function, which has no effect in the context it was used. 'repr' is field-specific metadata, and can only be attached to a model field using `Annotated` metadata or by assignment. This may have happened because an `Annotated` type alias using the `type` statement was used, or if the `Field()` function was attached to a single member of a union type.
+  warnings.warn(
+/home/s185927/.conda/envs/vjepa2-312/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py:2249: UnsupportedFieldAttributeWarning: The 'frozen' attribute with value True was provided to the `Field()` function, which has no effect in the context it was used. 'frozen' is field-specific metadata, and can only be attached to a model field using `Annotated` metadata or by assignment. This may have happened because an `Annotated` type alias using the `type` statement was used, or if the `Field()` function was attached to a single member of a union type.
+  warnings.warn(
+/home/s185927/.conda/envs/vjepa2-312/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py:2249: UnsupportedFieldAttributeWarning: The 'repr' attribute with value False was provided to the `Field()` function, which has no effect in the context it was used. 'repr' is field-specific metadata, and can only be attached to a model field using `Annotated` metadata or by assignment. This may have happened because an `Annotated` type alias using the `type` statement was used, or if the `Field()` function was attached to a single member of a union type.
+  warnings.warn(
+/home/s185927/.conda/envs/vjepa2-312/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py:2249: UnsupportedFieldAttributeWarning: The 'frozen' attribute with value True was provided to the `Field()` function, which has no effect in the context it was used. 'frozen' is field-specific metadata, and can only be attached to a model field using `Annotated` metadata or by assignment. This may have happened because an `Annotated` type alias using the `type` statement was used, or if the `Field()` function was attached to a single member of a union type.
+  warnings.warn(
+/home/s185927/.conda/envs/vjepa2-312/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py:2249: UnsupportedFieldAttributeWarning: The 'repr' attribute with value False was provided to the `Field()` function, which has no effect in the context it was used. 'repr' is field-specific metadata, and can only be attached to a model field using `Annotated` metadata or by assignment. This may have happened because an `Annotated` type alias using the `type` statement was used, or if the `Field()` function was attached to a single member of a union type.
+  warnings.warn(
+/home/s185927/.conda/envs/vjepa2-312/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py:2249: UnsupportedFieldAttributeWarning: The 'frozen' attribute with value True was provided to the `Field()` function, which has no effect in the context it was used. 'frozen' is field-specific metadata, and can only be attached to a model field using `Annotated` metadata or by assignment. This may have happened because an `Annotated` type alias using the `type` statement was used, or if the `Field()` function was attached to a single member of a union type.
+  warnings.warn(
+/home/s185927/.conda/envs/vjepa2-312/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py:2249: UnsupportedFieldAttributeWarning: The 'repr' attribute with value False was provided to the `Field()` function, which has no effect in the context it was used. 'repr' is field-specific metadata, and can only be attached to a model field using `Annotated` metadata or by assignment. This may have happened because an `Annotated` type alias using the `type` statement was used, or if the `Field()` function was attached to a single member of a union type.
+  warnings.warn(
+/home/s185927/.conda/envs/vjepa2-312/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py:2249: UnsupportedFieldAttributeWarning: The 'frozen' attribute with value True was provided to the `Field()` function, which has no effect in the context it was used. 'frozen' is field-specific metadata, and can only be attached to a model field using `Annotated` metadata or by assignment. This may have happened because an `Annotated` type alias using the `type` statement was used, or if the `Field()` function was attached to a single member of a union type.
+  warnings.warn(
+/home/s185927/.conda/envs/vjepa2-312/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py:2249: UnsupportedFieldAttributeWarning: The 'repr' attribute with value False was provided to the `Field()` function, which has no effect in the context it was used. 'repr' is field-specific metadata, and can only be attached to a model field using `Annotated` metadata or by assignment. This may have happened because an `Annotated` type alias using the `type` statement was used, or if the `Field()` function was attached to a single member of a union type.
+  warnings.warn(
+/home/s185927/.conda/envs/vjepa2-312/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py:2249: UnsupportedFieldAttributeWarning: The 'frozen' attribute with value True was provided to the `Field()` function, which has no effect in the context it was used. 'frozen' is field-specific metadata, and can only be attached to a model field using `Annotated` metadata or by assignment. This may have happened because an `Annotated` type alias using the `type` statement was used, or if the `Field()` function was attached to a single member of a union type.
+  warnings.warn(
+/home/s185927/.conda/envs/vjepa2-312/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py:2249: UnsupportedFieldAttributeWarning: The 'repr' attribute with value False was provided to the `Field()` function, which has no effect in the context it was used. 'repr' is field-specific metadata, and can only be attached to a model field using `Annotated` metadata or by assignment. This may have happened because an `Annotated` type alias using the `type` statement was used, or if the `Field()` function was attached to a single member of a union type.
+  warnings.warn(
+/home/s185927/.conda/envs/vjepa2-312/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py:2249: UnsupportedFieldAttributeWarning: The 'frozen' attribute with value True was provided to the `Field()` function, which has no effect in the context it was used. 'frozen' is field-specific metadata, and can only be attached to a model field using `Annotated` metadata or by assignment. This may have happened because an `Annotated` type alias using the `type` statement was used, or if the `Field()` function was attached to a single member of a union type.
+  warnings.warn(
+[INFO    ][2025-11-19 20:16:07][app.vjepa_droid.train_with_early_stopping][log_stats                ] [1,     0] loss: 2.052 [1.03, 1.03] [wd: 4.00e-02] [lr: 7.51e-05] [mem: 2.51e+04] [iter: 6205.2 ms] [gpu: 2065.2 ms] [data: 4139.9 ms]
+[INFO    ][2025-11-19 20:16:19][app.vjepa_droid.train_with_early_stopping][log_stats                ] [1,    10] loss: 1.474 [0.74, 0.74] [wd: 4.00e-02] [lr: 7.59e-05] [mem: 2.51e+04] [iter: 1698.9 ms] [gpu: 1321.1 ms] [data: 376.9 ms]
+[INFO    ][2025-11-19 20:16:32][app.vjepa_droid.train_with_early_stopping][log_stats                ] [1,    20] loss: 1.310 [0.65, 0.66] [wd: 4.00e-02] [lr: 7.66e-05] [mem: 2.51e+04] [iter: 1495.0 ms] [gpu: 1296.3 ms] [data: 197.8 ms]
+[INFO    ][2025-11-19 20:16:44][app.vjepa_droid.train_with_early_stopping][log_stats                ] [1,    30] loss: 1.224 [0.61, 0.61] [wd: 4.00e-02] [lr: 7.74e-05] [mem: 2.51e+04] [iter: 1423.0 ms] [gpu: 1288.1 ms] [data: 134.0 ms]
+[INFO    ][2025-11-19 20:16:56][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Exhausted data loaders. Refreshing...
+[INFO    ][2025-11-19 20:16:58][app.vjepa_droid.train_with_early_stopping][log_stats                ] [1,    40] loss: 1.168 [0.58, 0.59] [wd: 4.00e-02] [lr: 7.82e-05] [mem: 2.51e+04] [iter: 1407.6 ms] [gpu: 1288.0 ms] [data: 118.7 ms]
+[INFO    ][2025-11-19 20:17:11][app.vjepa_droid.train_with_early_stopping][log_stats                ] [1,    50] loss: 1.126 [0.56, 0.57] [wd: 4.00e-02] [lr: 7.90e-05] [mem: 2.51e+04] [iter: 1382.9 ms] [gpu: 1286.3 ms] [data: 95.7 ms]
+[INFO    ][2025-11-19 20:17:23][app.vjepa_droid.train_with_early_stopping][log_stats                ] [1,    60] loss: 1.093 [0.54, 0.55] [wd: 4.00e-02] [lr: 7.97e-05] [mem: 2.51e+04] [iter: 1362.8 ms] [gpu: 1281.8 ms] [data: 80.1 ms]
+[INFO    ][2025-11-19 20:17:36][app.vjepa_droid.train_with_early_stopping][log_stats                ] [1,    70] loss: 1.063 [0.53, 0.53] [wd: 4.00e-02] [lr: 8.05e-05] [mem: 2.51e+04] [iter: 1348.8 ms] [gpu: 1279.0 ms] [data: 68.9 ms]
+[INFO    ][2025-11-19 20:17:48][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Exhausted data loaders. Refreshing...
+[INFO    ][2025-11-19 20:17:50][app.vjepa_droid.train_with_early_stopping][log_stats                ] [1,    80] loss: 1.035 [0.52, 0.52] [wd: 4.00e-02] [lr: 8.13e-05] [mem: 2.51e+04] [iter: 1353.1 ms] [gpu: 1281.5 ms] [data: 70.7 ms]
+[INFO    ][2025-11-19 20:18:03][app.vjepa_droid.train_with_early_stopping][log_stats                ] [1,    90] loss: 1.009 [0.50, 0.51] [wd: 4.00e-02] [lr: 8.21e-05] [mem: 2.51e+04] [iter: 1344.2 ms] [gpu: 1280.3 ms] [data: 63.0 ms]
+[INFO    ][2025-11-19 20:18:15][app.vjepa_droid.train_with_early_stopping][log_stats                ] [1,   100] loss: 0.986 [0.49, 0.50] [wd: 4.00e-02] [lr: 8.29e-05] [mem: 2.51e+04] [iter: 1336.6 ms] [gpu: 1278.9 ms] [data: 56.8 ms]
+[INFO    ][2025-11-19 20:18:28][app.vjepa_droid.train_with_early_stopping][log_stats                ] [1,   110] loss: 0.963 [0.48, 0.48] [wd: 4.00e-02] [lr: 8.36e-05] [mem: 2.51e+04] [iter: 1330.2 ms] [gpu: 1277.6 ms] [data: 51.7 ms]
+[INFO    ][2025-11-19 20:18:40][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Exhausted data loaders. Refreshing...
+[INFO    ][2025-11-19 20:18:42][app.vjepa_droid.train_with_early_stopping][log_stats                ] [1,   120] loss: 0.943 [0.47, 0.47] [wd: 4.00e-02] [lr: 8.44e-05] [mem: 2.51e+04] [iter: 1333.7 ms] [gpu: 1278.4 ms] [data: 54.4 ms]
+[INFO    ][2025-11-19 20:18:54][app.vjepa_droid.train_with_early_stopping][log_stats                ] [1,   130] loss: 0.923 [0.46, 0.46] [wd: 4.00e-02] [lr: 8.52e-05] [mem: 2.51e+04] [iter: 1327.2 ms] [gpu: 1276.0 ms] [data: 50.3 ms]
+[INFO    ][2025-11-19 20:19:07][app.vjepa_droid.train_with_early_stopping][log_stats                ] [1,   140] loss: 0.906 [0.45, 0.45] [wd: 4.00e-02] [lr: 8.60e-05] [mem: 2.51e+04] [iter: 1322.0 ms] [gpu: 1274.3 ms] [data: 46.8 ms]
+[INFO    ][2025-11-19 20:19:19][app.vjepa_droid.train_with_early_stopping][log_stats                ] [1,   150] loss: 0.890 [0.44, 0.45] [wd: 4.00e-02] [lr: 8.67e-05] [mem: 2.51e+04] [iter: 1316.9 ms] [gpu: 1272.3 ms] [data: 43.7 ms]
+[INFO    ][2025-11-19 20:19:31][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Exhausted data loaders. Refreshing...
+[INFO    ][2025-11-19 20:19:33][app.vjepa_droid.train_with_early_stopping][log_stats                ] [1,   160] loss: 0.875 [0.44, 0.44] [wd: 4.00e-02] [lr: 8.75e-05] [mem: 2.51e+04] [iter: 1321.4 ms] [gpu: 1271.8 ms] [data: 48.7 ms]
+[INFO    ][2025-11-19 20:19:46][app.vjepa_droid.train_with_early_stopping][log_stats                ] [1,   170] loss: 0.860 [0.43, 0.43] [wd: 4.00e-02] [lr: 8.83e-05] [mem: 2.51e+04] [iter: 1318.8 ms] [gpu: 1271.9 ms] [data: 45.9 ms]
+[INFO    ][2025-11-19 20:19:58][app.vjepa_droid.train_with_early_stopping][log_stats                ] [1,   180] loss: 0.848 [0.42, 0.43] [wd: 4.00e-02] [lr: 8.91e-05] [mem: 2.51e+04] [iter: 1315.2 ms] [gpu: 1270.8 ms] [data: 43.4 ms]
+[INFO    ][2025-11-19 20:20:11][app.vjepa_droid.train_with_early_stopping][log_stats                ] [1,   190] loss: 0.835 [0.42, 0.42] [wd: 4.00e-02] [lr: 8.99e-05] [mem: 2.51e+04] [iter: 1311.7 ms] [gpu: 1269.6 ms] [data: 41.2 ms]
+[INFO    ][2025-11-19 20:20:22][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Exhausted data loaders. Refreshing...
+[INFO    ][2025-11-19 20:20:25][app.vjepa_droid.train_with_early_stopping][log_stats                ] [1,   200] loss: 0.824 [0.41, 0.41] [wd: 4.00e-02] [lr: 9.06e-05] [mem: 2.51e+04] [iter: 1314.2 ms] [gpu: 1269.5 ms] [data: 43.8 ms]
+[INFO    ][2025-11-19 20:20:37][app.vjepa_droid.train_with_early_stopping][log_stats                ] [1,   210] loss: 0.813 [0.41, 0.41] [wd: 4.00e-02] [lr: 9.14e-05] [mem: 2.51e+04] [iter: 1312.0 ms] [gpu: 1269.3 ms] [data: 41.8 ms]
+[INFO    ][2025-11-19 20:20:50][app.vjepa_droid.train_with_early_stopping][log_stats                ] [1,   220] loss: 0.803 [0.40, 0.40] [wd: 4.00e-02] [lr: 9.22e-05] [mem: 2.51e+04] [iter: 1310.1 ms] [gpu: 1269.3 ms] [data: 39.9 ms]
+[INFO    ][2025-11-19 20:21:03][app.vjepa_droid.train_with_early_stopping][log_stats                ] [1,   230] loss: 0.793 [0.40, 0.40] [wd: 4.00e-02] [lr: 9.30e-05] [mem: 2.51e+04] [iter: 1308.1 ms] [gpu: 1269.1 ms] [data: 38.2 ms]
+[INFO    ][2025-11-19 20:21:14][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Exhausted data loaders. Refreshing...
+[INFO    ][2025-11-19 20:21:16][app.vjepa_droid.train_with_early_stopping][log_stats                ] [1,   240] loss: 0.784 [0.39, 0.39] [wd: 4.00e-02] [lr: 9.37e-05] [mem: 2.51e+04] [iter: 1311.5 ms] [gpu: 1270.1 ms] [data: 40.5 ms]
+[INFO    ][2025-11-19 20:21:29][app.vjepa_droid.train_with_early_stopping][log_stats                ] [1,   250] loss: 0.775 [0.39, 0.39] [wd: 4.00e-02] [lr: 9.45e-05] [mem: 2.51e+04] [iter: 1309.1 ms] [gpu: 1269.3 ms] [data: 38.9 ms]
+[INFO    ][2025-11-19 20:21:42][app.vjepa_droid.train_with_early_stopping][log_stats                ] [1,   260] loss: 0.767 [0.38, 0.38] [wd: 4.00e-02] [lr: 9.53e-05] [mem: 2.51e+04] [iter: 1307.4 ms] [gpu: 1269.0 ms] [data: 37.4 ms]
+[INFO    ][2025-11-19 20:21:54][app.vjepa_droid.train_with_early_stopping][log_stats                ] [1,   270] loss: 0.760 [0.38, 0.38] [wd: 4.00e-02] [lr: 9.61e-05] [mem: 2.51e+04] [iter: 1306.1 ms] [gpu: 1269.1 ms] [data: 36.1 ms]
+[INFO    ][2025-11-19 20:22:06][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Exhausted data loaders. Refreshing...
+[INFO    ][2025-11-19 20:22:08][app.vjepa_droid.train_with_early_stopping][log_stats                ] [1,   280] loss: 0.752 [0.38, 0.38] [wd: 4.00e-02] [lr: 9.69e-05] [mem: 2.51e+04] [iter: 1307.9 ms] [gpu: 1269.5 ms] [data: 37.5 ms]
+[INFO    ][2025-11-19 20:22:21][app.vjepa_droid.train_with_early_stopping][log_stats                ] [1,   290] loss: 0.745 [0.37, 0.37] [wd: 4.00e-02] [lr: 9.76e-05] [mem: 2.51e+04] [iter: 1306.6 ms] [gpu: 1269.4 ms] [data: 36.2 ms]
+[INFO    ][2025-11-19 20:22:32][app.vjepa_droid.train_with_early_stopping][log_stats                ] [1,   299] loss: 0.739 [0.37, 0.37] [wd: 4.00e-02] [lr: 9.83e-05] [mem: 2.51e+04] [iter: 1304.9 ms] [gpu: 1268.9 ms] [data: 35.2 ms]
+[INFO    ][2025-11-19 20:22:32][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] avg. loss 0.739
+[INFO    ][2025-11-19 20:22:40][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Running validation...
+/home/s185927/.conda/envs/vjepa2-312/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py:2249: UnsupportedFieldAttributeWarning: The 'repr' attribute with value False was provided to the `Field()` function, which has no effect in the context it was used. 'repr' is field-specific metadata, and can only be attached to a model field using `Annotated` metadata or by assignment. This may have happened because an `Annotated` type alias using the `type` statement was used, or if the `Field()` function was attached to a single member of a union type.
+  warnings.warn(
+/home/s185927/.conda/envs/vjepa2-312/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py:2249: UnsupportedFieldAttributeWarning: The 'frozen' attribute with value True was provided to the `Field()` function, which has no effect in the context it was used. 'frozen' is field-specific metadata, and can only be attached to a model field using `Annotated` metadata or by assignment. This may have happened because an `Annotated` type alias using the `type` statement was used, or if the `Field()` function was attached to a single member of a union type.
+  warnings.warn(
+/home/s185927/.conda/envs/vjepa2-312/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py:2249: UnsupportedFieldAttributeWarning: The 'repr' attribute with value False was provided to the `Field()` function, which has no effect in the context it was used. 'repr' is field-specific metadata, and can only be attached to a model field using `Annotated` metadata or by assignment. This may have happened because an `Annotated` type alias using the `type` statement was used, or if the `Field()` function was attached to a single member of a union type.
+  warnings.warn(
+/home/s185927/.conda/envs/vjepa2-312/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py:2249: UnsupportedFieldAttributeWarning: The 'frozen' attribute with value True was provided to the `Field()` function, which has no effect in the context it was used. 'frozen' is field-specific metadata, and can only be attached to a model field using `Annotated` metadata or by assignment. This may have happened because an `Annotated` type alias using the `type` statement was used, or if the `Field()` function was attached to a single member of a union type.
+  warnings.warn(
+/home/s185927/.conda/envs/vjepa2-312/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py:2249: UnsupportedFieldAttributeWarning: The 'repr' attribute with value False was provided to the `Field()` function, which has no effect in the context it was used. 'repr' is field-specific metadata, and can only be attached to a model field using `Annotated` metadata or by assignment. This may have happened because an `Annotated` type alias using the `type` statement was used, or if the `Field()` function was attached to a single member of a union type.
+  warnings.warn(
+/home/s185927/.conda/envs/vjepa2-312/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py:2249: UnsupportedFieldAttributeWarning: The 'frozen' attribute with value True was provided to the `Field()` function, which has no effect in the context it was used. 'frozen' is field-specific metadata, and can only be attached to a model field using `Annotated` metadata or by assignment. This may have happened because an `Annotated` type alias using the `type` statement was used, or if the `Field()` function was attached to a single member of a union type.
+  warnings.warn(
+/home/s185927/.conda/envs/vjepa2-312/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py:2249: UnsupportedFieldAttributeWarning: The 'repr' attribute with value False was provided to the `Field()` function, which has no effect in the context it was used. 'repr' is field-specific metadata, and can only be attached to a model field using `Annotated` metadata or by assignment. This may have happened because an `Annotated` type alias using the `type` statement was used, or if the `Field()` function was attached to a single member of a union type.
+  warnings.warn(
+/home/s185927/.conda/envs/vjepa2-312/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py:2249: UnsupportedFieldAttributeWarning: The 'frozen' attribute with value True was provided to the `Field()` function, which has no effect in the context it was used. 'frozen' is field-specific metadata, and can only be attached to a model field using `Annotated` metadata or by assignment. This may have happened because an `Annotated` type alias using the `type` statement was used, or if the `Field()` function was attached to a single member of a union type.
+  warnings.warn(
+/home/s185927/.conda/envs/vjepa2-312/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py:2249: UnsupportedFieldAttributeWarning: The 'repr' attribute with value False was provided to the `Field()` function, which has no effect in the context it was used. 'repr' is field-specific metadata, and can only be attached to a model field using `Annotated` metadata or by assignment. This may have happened because an `Annotated` type alias using the `type` statement was used, or if the `Field()` function was attached to a single member of a union type.
+  warnings.warn(
+/home/s185927/.conda/envs/vjepa2-312/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py:2249: UnsupportedFieldAttributeWarning: The 'frozen' attribute with value True was provided to the `Field()` function, which has no effect in the context it was used. 'frozen' is field-specific metadata, and can only be attached to a model field using `Annotated` metadata or by assignment. This may have happened because an `Annotated` type alias using the `type` statement was used, or if the `Field()` function was attached to a single member of a union type.
+  warnings.warn(
+/home/s185927/.conda/envs/vjepa2-312/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py:2249: UnsupportedFieldAttributeWarning: The 'repr' attribute with value False was provided to the `Field()` function, which has no effect in the context it was used. 'repr' is field-specific metadata, and can only be attached to a model field using `Annotated` metadata or by assignment. This may have happened because an `Annotated` type alias using the `type` statement was used, or if the `Field()` function was attached to a single member of a union type.
+  warnings.warn(
+/home/s185927/.conda/envs/vjepa2-312/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py:2249: UnsupportedFieldAttributeWarning: The 'frozen' attribute with value True was provided to the `Field()` function, which has no effect in the context it was used. 'frozen' is field-specific metadata, and can only be attached to a model field using `Annotated` metadata or by assignment. This may have happened because an `Annotated` type alias using the `type` statement was used, or if the `Field()` function was attached to a single member of a union type.
+  warnings.warn(
+/home/s185927/.conda/envs/vjepa2-312/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py:2249: UnsupportedFieldAttributeWarning: The 'repr' attribute with value False was provided to the `Field()` function, which has no effect in the context it was used. 'repr' is field-specific metadata, and can only be attached to a model field using `Annotated` metadata or by assignment. This may have happened because an `Annotated` type alias using the `type` statement was used, or if the `Field()` function was attached to a single member of a union type.
+  warnings.warn(
+/home/s185927/.conda/envs/vjepa2-312/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py:2249: UnsupportedFieldAttributeWarning: The 'frozen' attribute with value True was provided to the `Field()` function, which has no effect in the context it was used. 'frozen' is field-specific metadata, and can only be attached to a model field using `Annotated` metadata or by assignment. This may have happened because an `Annotated` type alias using the `type` statement was used, or if the `Field()` function was attached to a single member of a union type.
+  warnings.warn(
+/home/s185927/.conda/envs/vjepa2-312/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py:2249: UnsupportedFieldAttributeWarning: The 'repr' attribute with value False was provided to the `Field()` function, which has no effect in the context it was used. 'repr' is field-specific metadata, and can only be attached to a model field using `Annotated` metadata or by assignment. This may have happened because an `Annotated` type alias using the `type` statement was used, or if the `Field()` function was attached to a single member of a union type.
+  warnings.warn(
+/home/s185927/.conda/envs/vjepa2-312/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py:2249: UnsupportedFieldAttributeWarning: The 'frozen' attribute with value True was provided to the `Field()` function, which has no effect in the context it was used. 'frozen' is field-specific metadata, and can only be attached to a model field using `Annotated` metadata or by assignment. This may have happened because an `Annotated` type alias using the `type` statement was used, or if the `Field()` function was attached to a single member of a union type.
+  warnings.warn(
+/home/s185927/.conda/envs/vjepa2-312/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py:2249: UnsupportedFieldAttributeWarning: The 'repr' attribute with value False was provided to the `Field()` function, which has no effect in the context it was used. 'repr' is field-specific metadata, and can only be attached to a model field using `Annotated` metadata or by assignment. This may have happened because an `Annotated` type alias using the `type` statement was used, or if the `Field()` function was attached to a single member of a union type.
+  warnings.warn(
+/home/s185927/.conda/envs/vjepa2-312/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py:2249: UnsupportedFieldAttributeWarning: The 'frozen' attribute with value True was provided to the `Field()` function, which has no effect in the context it was used. 'frozen' is field-specific metadata, and can only be attached to a model field using `Annotated` metadata or by assignment. This may have happened because an `Annotated` type alias using the `type` statement was used, or if the `Field()` function was attached to a single member of a union type.
+  warnings.warn(
+/home/s185927/.conda/envs/vjepa2-312/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py:2249: UnsupportedFieldAttributeWarning: The 'repr' attribute with value False was provided to the `Field()` function, which has no effect in the context it was used. 'repr' is field-specific metadata, and can only be attached to a model field using `Annotated` metadata or by assignment. This may have happened because an `Annotated` type alias using the `type` statement was used, or if the `Field()` function was attached to a single member of a union type.
+  warnings.warn(
+/home/s185927/.conda/envs/vjepa2-312/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py:2249: UnsupportedFieldAttributeWarning: The 'frozen' attribute with value True was provided to the `Field()` function, which has no effect in the context it was used. 'frozen' is field-specific metadata, and can only be attached to a model field using `Annotated` metadata or by assignment. This may have happened because an `Annotated` type alias using the `type` statement was used, or if the `Field()` function was attached to a single member of a union type.
+  warnings.warn(
+/home/s185927/.conda/envs/vjepa2-312/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py:2249: UnsupportedFieldAttributeWarning: The 'repr' attribute with value False was provided to the `Field()` function, which has no effect in the context it was used. 'repr' is field-specific metadata, and can only be attached to a model field using `Annotated` metadata or by assignment. This may have happened because an `Annotated` type alias using the `type` statement was used, or if the `Field()` function was attached to a single member of a union type.
+  warnings.warn(
+/home/s185927/.conda/envs/vjepa2-312/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py:2249: UnsupportedFieldAttributeWarning: The 'frozen' attribute with value True was provided to the `Field()` function, which has no effect in the context it was used. 'frozen' is field-specific metadata, and can only be attached to a model field using `Annotated` metadata or by assignment. This may have happened because an `Annotated` type alias using the `type` statement was used, or if the `Field()` function was attached to a single member of a union type.
+  warnings.warn(
+/home/s185927/.conda/envs/vjepa2-312/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py:2249: UnsupportedFieldAttributeWarning: The 'repr' attribute with value False was provided to the `Field()` function, which has no effect in the context it was used. 'repr' is field-specific metadata, and can only be attached to a model field using `Annotated` metadata or by assignment. This may have happened because an `Annotated` type alias using the `type` statement was used, or if the `Field()` function was attached to a single member of a union type.
+  warnings.warn(
+/home/s185927/.conda/envs/vjepa2-312/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py:2249: UnsupportedFieldAttributeWarning: The 'frozen' attribute with value True was provided to the `Field()` function, which has no effect in the context it was used. 'frozen' is field-specific metadata, and can only be attached to a model field using `Annotated` metadata or by assignment. This may have happened because an `Annotated` type alias using the `type` statement was used, or if the `Field()` function was attached to a single member of a union type.
+  warnings.warn(
+[INFO    ][2025-11-19 20:23:00][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Validation: loss=0.7188 [jloss=0.3545, sloss=0.3642]
+[INFO    ][2025-11-19 20:23:00][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] ★ Validation improved: inf → 0.7188
+[INFO    ][2025-11-19 20:23:04][app.vjepa_droid.train_with_early_stopping][save_checkpoint          ] ★ Saved best model with val_loss=0.7188
+[INFO    ][2025-11-19 20:23:04][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Epoch 2
+[INFO    ][2025-11-19 20:23:06][app.vjepa_droid.train_with_early_stopping][log_stats                ] [2,     0] loss: 0.556 [0.28, 0.27] [wd: 4.00e-02] [lr: 9.84e-05] [mem: 2.51e+04] [iter: 1333.9 ms] [gpu: 1332.6 ms] [data: 0.3 ms]
+[INFO    ][2025-11-19 20:23:18][app.vjepa_droid.train_with_early_stopping][log_stats                ] [2,    10] loss: 0.539 [0.27, 0.27] [wd: 4.00e-02] [lr: 9.92e-05] [mem: 2.51e+04] [iter: 1252.3 ms] [gpu: 1251.1 ms] [data: 0.2 ms]
+[INFO    ][2025-11-19 20:23:30][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Exhausted data loaders. Refreshing...
+[INFO    ][2025-11-19 20:23:32][app.vjepa_droid.train_with_early_stopping][log_stats                ] [2,    20] loss: 0.540 [0.27, 0.27] [wd: 4.00e-02] [lr: 1.00e-04] [mem: 2.51e+04] [iter: 1319.1 ms] [gpu: 1271.5 ms] [data: 46.6 ms]
+[INFO    ][2025-11-19 20:23:45][app.vjepa_droid.train_with_early_stopping][log_stats                ] [2,    30] loss: 0.537 [0.27, 0.27] [wd: 4.00e-02] [lr: 1.01e-04] [mem: 2.51e+04] [iter: 1309.6 ms] [gpu: 1277.0 ms] [data: 31.7 ms]
+[INFO    ][2025-11-19 20:23:58][app.vjepa_droid.train_with_early_stopping][log_stats                ] [2,    40] loss: 0.534 [0.27, 0.26] [wd: 4.00e-02] [lr: 1.02e-04] [mem: 2.51e+04] [iter: 1297.6 ms] [gpu: 1272.5 ms] [data: 24.1 ms]
+[INFO    ][2025-11-19 20:24:10][app.vjepa_droid.train_with_early_stopping][log_stats                ] [2,    50] loss: 0.531 [0.27, 0.26] [wd: 4.00e-02] [lr: 1.02e-04] [mem: 2.51e+04] [iter: 1286.1 ms] [gpu: 1265.8 ms] [data: 19.4 ms]
+[INFO    ][2025-11-19 20:24:22][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Exhausted data loaders. Refreshing...
+[INFO    ][2025-11-19 20:24:24][app.vjepa_droid.train_with_early_stopping][log_stats                ] [2,    60] loss: 0.529 [0.27, 0.26] [wd: 4.00e-02] [lr: 1.03e-04] [mem: 2.51e+04] [iter: 1303.4 ms] [gpu: 1269.7 ms] [data: 32.7 ms]
+[INFO    ][2025-11-19 20:24:37][app.vjepa_droid.train_with_early_stopping][log_stats                ] [2,    70] loss: 0.526 [0.27, 0.26] [wd: 4.00e-02] [lr: 1.04e-04] [mem: 2.51e+04] [iter: 1297.7 ms] [gpu: 1268.4 ms] [data: 28.3 ms]
+[INFO    ][2025-11-19 20:24:49][app.vjepa_droid.train_with_early_stopping][log_stats                ] [2,    80] loss: 0.524 [0.27, 0.26] [wd: 4.00e-02] [lr: 1.05e-04] [mem: 2.51e+04] [iter: 1295.1 ms] [gpu: 1269.2 ms] [data: 24.9 ms]
+[INFO    ][2025-11-19 20:25:02][app.vjepa_droid.train_with_early_stopping][log_stats                ] [2,    90] loss: 0.523 [0.27, 0.26] [wd: 4.00e-02] [lr: 1.05e-04] [mem: 2.51e+04] [iter: 1292.3 ms] [gpu: 1269.2 ms] [data: 22.2 ms]
+[INFO    ][2025-11-19 20:25:13][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Exhausted data loaders. Refreshing...
+[INFO    ][2025-11-19 20:25:16][app.vjepa_droid.train_with_early_stopping][log_stats                ] [2,   100] loss: 0.521 [0.27, 0.26] [wd: 4.00e-02] [lr: 1.06e-04] [mem: 2.51e+04] [iter: 1299.4 ms] [gpu: 1268.7 ms] [data: 29.8 ms]
+[INFO    ][2025-11-19 20:25:29][app.vjepa_droid.train_with_early_stopping][log_stats                ] [2,   110] loss: 0.519 [0.26, 0.25] [wd: 4.00e-02] [lr: 1.07e-04] [mem: 2.51e+04] [iter: 1297.8 ms] [gpu: 1269.6 ms] [data: 27.2 ms]
+[INFO    ][2025-11-19 20:25:41][app.vjepa_droid.train_with_early_stopping][log_stats                ] [2,   120] loss: 0.517 [0.26, 0.25] [wd: 4.00e-02] [lr: 1.08e-04] [mem: 2.51e+04] [iter: 1295.4 ms] [gpu: 1269.5 ms] [data: 25.1 ms]
+[INFO    ][2025-11-19 20:25:54][app.vjepa_droid.train_with_early_stopping][log_stats                ] [2,   130] loss: 0.515 [0.26, 0.25] [wd: 4.00e-02] [lr: 1.09e-04] [mem: 2.51e+04] [iter: 1293.5 ms] [gpu: 1269.5 ms] [data: 23.2 ms]
+[INFO    ][2025-11-19 20:26:05][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Exhausted data loaders. Refreshing...
+[INFO    ][2025-11-19 20:26:08][app.vjepa_droid.train_with_early_stopping][log_stats                ] [2,   140] loss: 0.513 [0.26, 0.25] [wd: 4.00e-02] [lr: 1.09e-04] [mem: 2.51e+04] [iter: 1298.9 ms] [gpu: 1270.6 ms] [data: 27.4 ms]
+[INFO    ][2025-11-19 20:26:20][app.vjepa_droid.train_with_early_stopping][log_stats                ] [2,   150] loss: 0.512 [0.26, 0.25] [wd: 4.00e-02] [lr: 1.10e-04] [mem: 2.51e+04] [iter: 1296.6 ms] [gpu: 1270.0 ms] [data: 25.7 ms]
+[INFO    ][2025-11-19 20:26:33][app.vjepa_droid.train_with_early_stopping][log_stats                ] [2,   160] loss: 0.510 [0.26, 0.25] [wd: 4.00e-02] [lr: 1.11e-04] [mem: 2.51e+04] [iter: 1294.7 ms] [gpu: 1269.7 ms] [data: 24.1 ms]
+[INFO    ][2025-11-19 20:26:45][app.vjepa_droid.train_with_early_stopping][log_stats                ] [2,   170] loss: 0.509 [0.26, 0.25] [wd: 4.00e-02] [lr: 1.12e-04] [mem: 2.51e+04] [iter: 1292.2 ms] [gpu: 1268.5 ms] [data: 22.7 ms]
+[INFO    ][2025-11-19 20:26:57][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Exhausted data loaders. Refreshing...
+[INFO    ][2025-11-19 20:26:59][app.vjepa_droid.train_with_early_stopping][log_stats                ] [2,   180] loss: 0.508 [0.26, 0.25] [wd: 4.00e-02] [lr: 1.12e-04] [mem: 2.51e+04] [iter: 1295.9 ms] [gpu: 1268.2 ms] [data: 26.7 ms]
+[INFO    ][2025-11-19 20:27:12][app.vjepa_droid.train_with_early_stopping][log_stats                ] [2,   190] loss: 0.506 [0.26, 0.25] [wd: 4.00e-02] [lr: 1.13e-04] [mem: 2.51e+04] [iter: 1293.9 ms] [gpu: 1267.6 ms] [data: 25.4 ms]
+[INFO    ][2025-11-19 20:27:24][app.vjepa_droid.train_with_early_stopping][log_stats                ] [2,   200] loss: 0.504 [0.26, 0.25] [wd: 4.00e-02] [lr: 1.14e-04] [mem: 2.51e+04] [iter: 1293.0 ms] [gpu: 1267.9 ms] [data: 24.1 ms]
+[INFO    ][2025-11-19 20:27:37][app.vjepa_droid.train_with_early_stopping][log_stats                ] [2,   210] loss: 0.503 [0.26, 0.25] [wd: 4.00e-02] [lr: 1.15e-04] [mem: 2.51e+04] [iter: 1291.1 ms] [gpu: 1267.2 ms] [data: 23.0 ms]
+[INFO    ][2025-11-19 20:27:48][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Exhausted data loaders. Refreshing...
+[INFO    ][2025-11-19 20:27:51][app.vjepa_droid.train_with_early_stopping][log_stats                ] [2,   220] loss: 0.502 [0.26, 0.25] [wd: 4.00e-02] [lr: 1.16e-04] [mem: 2.51e+04] [iter: 1295.1 ms] [gpu: 1268.4 ms] [data: 25.7 ms]
+[INFO    ][2025-11-19 20:28:03][app.vjepa_droid.train_with_early_stopping][log_stats                ] [2,   230] loss: 0.500 [0.26, 0.24] [wd: 4.00e-02] [lr: 1.16e-04] [mem: 2.51e+04] [iter: 1293.8 ms] [gpu: 1268.3 ms] [data: 24.6 ms]
+[INFO    ][2025-11-19 20:28:16][app.vjepa_droid.train_with_early_stopping][log_stats                ] [2,   240] loss: 0.499 [0.25, 0.24] [wd: 4.00e-02] [lr: 1.17e-04] [mem: 2.51e+04] [iter: 1291.6 ms] [gpu: 1267.0 ms] [data: 23.7 ms]
+[INFO    ][2025-11-19 20:28:28][app.vjepa_droid.train_with_early_stopping][log_stats                ] [2,   250] loss: 0.498 [0.25, 0.24] [wd: 4.00e-02] [lr: 1.18e-04] [mem: 2.51e+04] [iter: 1290.1 ms] [gpu: 1266.4 ms] [data: 22.7 ms]
+[INFO    ][2025-11-19 20:28:40][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Exhausted data loaders. Refreshing...
+[INFO    ][2025-11-19 20:28:42][app.vjepa_droid.train_with_early_stopping][log_stats                ] [2,   260] loss: 0.497 [0.25, 0.24] [wd: 4.00e-02] [lr: 1.19e-04] [mem: 2.51e+04] [iter: 1294.5 ms] [gpu: 1267.1 ms] [data: 26.5 ms]
+[INFO    ][2025-11-19 20:28:55][app.vjepa_droid.train_with_early_stopping][log_stats                ] [2,   270] loss: 0.495 [0.25, 0.24] [wd: 4.00e-02] [lr: 1.19e-04] [mem: 2.51e+04] [iter: 1293.5 ms] [gpu: 1267.0 ms] [data: 25.5 ms]
+[INFO    ][2025-11-19 20:29:08][app.vjepa_droid.train_with_early_stopping][log_stats                ] [2,   280] loss: 0.494 [0.25, 0.24] [wd: 4.00e-02] [lr: 1.20e-04] [mem: 2.51e+04] [iter: 1292.1 ms] [gpu: 1266.5 ms] [data: 24.6 ms]
+[INFO    ][2025-11-19 20:29:20][app.vjepa_droid.train_with_early_stopping][log_stats                ] [2,   290] loss: 0.493 [0.25, 0.24] [wd: 4.00e-02] [lr: 1.21e-04] [mem: 2.51e+04] [iter: 1291.4 ms] [gpu: 1266.7 ms] [data: 23.8 ms]
+[INFO    ][2025-11-19 20:29:32][app.vjepa_droid.train_with_early_stopping][log_stats                ] [2,   299] loss: 0.492 [0.25, 0.24] [wd: 4.00e-02] [lr: 1.22e-04] [mem: 2.51e+04] [iter: 1291.0 ms] [gpu: 1267.0 ms] [data: 23.1 ms]
+[INFO    ][2025-11-19 20:29:32][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] avg. loss 0.492
+[INFO    ][2025-11-19 20:29:36][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Running validation...
+[INFO    ][2025-11-19 20:29:52][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Validation: loss=0.7277 [jloss=0.3565, sloss=0.3712]
+[INFO    ][2025-11-19 20:29:52][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] No improvement for 1 epochs (best: 0.7188)
+[INFO    ][2025-11-19 20:29:52][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Epoch 3
+[INFO    ][2025-11-19 20:29:52][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Exhausted data loaders. Refreshing...
+[INFO    ][2025-11-19 20:29:54][app.vjepa_droid.train_with_early_stopping][log_stats                ] [3,     0] loss: 0.452 [0.23, 0.22] [wd: 4.00e-02] [lr: 1.22e-04] [mem: 2.51e+04] [iter: 2307.6 ms] [gpu: 1532.4 ms] [data: 774.1 ms]
+[INFO    ][2025-11-19 20:30:07][app.vjepa_droid.train_with_early_stopping][log_stats                ] [3,    10] loss: 0.452 [0.23, 0.22] [wd: 4.00e-02] [lr: 1.23e-04] [mem: 2.51e+04] [iter: 1354.4 ms] [gpu: 1282.5 ms] [data: 71.0 ms]
+[INFO    ][2025-11-19 20:30:20][app.vjepa_droid.train_with_early_stopping][log_stats                ] [3,    20] loss: 0.449 [0.23, 0.22] [wd: 4.00e-02] [lr: 1.23e-04] [mem: 2.51e+04] [iter: 1315.3 ms] [gpu: 1276.9 ms] [data: 37.4 ms]
+[INFO    ][2025-11-19 20:30:32][app.vjepa_droid.train_with_early_stopping][log_stats                ] [3,    30] loss: 0.451 [0.23, 0.22] [wd: 4.00e-02] [lr: 1.24e-04] [mem: 2.51e+04] [iter: 1297.8 ms] [gpu: 1271.5 ms] [data: 25.4 ms]
+[INFO    ][2025-11-19 20:30:44][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Exhausted data loaders. Refreshing...
+[INFO    ][2025-11-19 20:30:46][app.vjepa_droid.train_with_early_stopping][log_stats                ] [3,    40] loss: 0.450 [0.23, 0.22] [wd: 4.00e-02] [lr: 1.25e-04] [mem: 2.51e+04] [iter: 1307.5 ms] [gpu: 1271.6 ms] [data: 34.9 ms]
+[INFO    ][2025-11-19 20:30:58][app.vjepa_droid.train_with_early_stopping][log_stats                ] [3,    50] loss: 0.448 [0.23, 0.22] [wd: 4.00e-02] [lr: 1.26e-04] [mem: 2.51e+04] [iter: 1300.3 ms] [gpu: 1271.0 ms] [data: 28.4 ms]
+[INFO    ][2025-11-19 20:31:11][app.vjepa_droid.train_with_early_stopping][log_stats                ] [3,    60] loss: 0.448 [0.23, 0.22] [wd: 4.00e-02] [lr: 1.26e-04] [mem: 2.51e+04] [iter: 1295.6 ms] [gpu: 1270.8 ms] [data: 23.8 ms]
+[INFO    ][2025-11-19 20:31:23][app.vjepa_droid.train_with_early_stopping][log_stats                ] [3,    70] loss: 0.449 [0.23, 0.22] [wd: 4.00e-02] [lr: 1.27e-04] [mem: 2.51e+04] [iter: 1288.2 ms] [gpu: 1266.8 ms] [data: 20.5 ms]
+[INFO    ][2025-11-19 20:31:35][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Exhausted data loaders. Refreshing...
+[INFO    ][2025-11-19 20:31:37][app.vjepa_droid.train_with_early_stopping][log_stats                ] [3,    80] loss: 0.448 [0.23, 0.22] [wd: 4.00e-02] [lr: 1.28e-04] [mem: 2.51e+04] [iter: 1300.4 ms] [gpu: 1268.2 ms] [data: 31.3 ms]
+[INFO    ][2025-11-19 20:31:50][app.vjepa_droid.train_with_early_stopping][log_stats                ] [3,    90] loss: 0.447 [0.23, 0.22] [wd: 4.00e-02] [lr: 1.29e-04] [mem: 2.51e+04] [iter: 1297.0 ms] [gpu: 1267.9 ms] [data: 28.1 ms]
+[INFO    ][2025-11-19 20:32:03][app.vjepa_droid.train_with_early_stopping][log_stats                ] [3,   100] loss: 0.447 [0.23, 0.22] [wd: 4.00e-02] [lr: 1.30e-04] [mem: 2.51e+04] [iter: 1293.4 ms] [gpu: 1267.1 ms] [data: 25.4 ms]
+[INFO    ][2025-11-19 20:32:15][app.vjepa_droid.train_with_early_stopping][log_stats                ] [3,   110] loss: 0.447 [0.23, 0.22] [wd: 4.00e-02] [lr: 1.30e-04] [mem: 2.51e+04] [iter: 1290.5 ms] [gpu: 1266.4 ms] [data: 23.1 ms]
+[INFO    ][2025-11-19 20:32:27][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Exhausted data loaders. Refreshing...
+[INFO    ][2025-11-19 20:32:29][app.vjepa_droid.train_with_early_stopping][log_stats                ] [3,   120] loss: 0.447 [0.23, 0.22] [wd: 4.00e-02] [lr: 1.31e-04] [mem: 2.51e+04] [iter: 1295.8 ms] [gpu: 1266.8 ms] [data: 28.0 ms]
+[INFO    ][2025-11-19 20:32:41][app.vjepa_droid.train_with_early_stopping][log_stats                ] [3,   130] loss: 0.446 [0.23, 0.22] [wd: 4.00e-02] [lr: 1.32e-04] [mem: 2.51e+04] [iter: 1293.3 ms] [gpu: 1266.5 ms] [data: 25.9 ms]
+[INFO    ][2025-11-19 20:32:54][app.vjepa_droid.train_with_early_stopping][log_stats                ] [3,   140] loss: 0.446 [0.23, 0.22] [wd: 4.00e-02] [lr: 1.33e-04] [mem: 2.51e+04] [iter: 1290.8 ms] [gpu: 1265.8 ms] [data: 24.1 ms]
+[INFO    ][2025-11-19 20:33:07][app.vjepa_droid.train_with_early_stopping][log_stats                ] [3,   150] loss: 0.446 [0.23, 0.22] [wd: 4.00e-02] [lr: 1.33e-04] [mem: 2.51e+04] [iter: 1288.7 ms] [gpu: 1265.3 ms] [data: 22.5 ms]
+[INFO    ][2025-11-19 20:33:18][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Exhausted data loaders. Refreshing...
+[INFO    ][2025-11-19 20:33:20][app.vjepa_droid.train_with_early_stopping][log_stats                ] [3,   160] loss: 0.445 [0.23, 0.22] [wd: 4.00e-02] [lr: 1.34e-04] [mem: 2.51e+04] [iter: 1293.4 ms] [gpu: 1265.1 ms] [data: 27.4 ms]
+[INFO    ][2025-11-19 20:33:33][app.vjepa_droid.train_with_early_stopping][log_stats                ] [3,   170] loss: 0.445 [0.23, 0.22] [wd: 4.00e-02] [lr: 1.35e-04] [mem: 2.51e+04] [iter: 1291.5 ms] [gpu: 1264.8 ms] [data: 25.8 ms]
+[INFO    ][2025-11-19 20:33:45][app.vjepa_droid.train_with_early_stopping][log_stats                ] [3,   180] loss: 0.444 [0.23, 0.22] [wd: 4.00e-02] [lr: 1.36e-04] [mem: 2.51e+04] [iter: 1288.5 ms] [gpu: 1263.1 ms] [data: 24.4 ms]
+[INFO    ][2025-11-19 20:33:58][app.vjepa_droid.train_with_early_stopping][log_stats                ] [3,   190] loss: 0.444 [0.23, 0.22] [wd: 4.00e-02] [lr: 1.37e-04] [mem: 2.51e+04] [iter: 1287.1 ms] [gpu: 1263.0 ms] [data: 23.2 ms]
+[INFO    ][2025-11-19 20:34:09][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Exhausted data loaders. Refreshing...
+[INFO    ][2025-11-19 20:34:12][app.vjepa_droid.train_with_early_stopping][log_stats                ] [3,   200] loss: 0.444 [0.23, 0.22] [wd: 4.00e-02] [lr: 1.37e-04] [mem: 2.51e+04] [iter: 1292.0 ms] [gpu: 1265.1 ms] [data: 25.9 ms]
+[INFO    ][2025-11-19 20:34:24][app.vjepa_droid.train_with_early_stopping][log_stats                ] [3,   210] loss: 0.444 [0.23, 0.22] [wd: 4.00e-02] [lr: 1.38e-04] [mem: 2.51e+04] [iter: 1290.9 ms] [gpu: 1265.2 ms] [data: 24.8 ms]
+[INFO    ][2025-11-19 20:34:37][app.vjepa_droid.train_with_early_stopping][log_stats                ] [3,   220] loss: 0.443 [0.23, 0.22] [wd: 4.00e-02] [lr: 1.39e-04] [mem: 2.51e+04] [iter: 1288.7 ms] [gpu: 1264.1 ms] [data: 23.7 ms]
+[INFO    ][2025-11-19 20:34:49][app.vjepa_droid.train_with_early_stopping][log_stats                ] [3,   230] loss: 0.443 [0.23, 0.22] [wd: 4.00e-02] [lr: 1.40e-04] [mem: 2.51e+04] [iter: 1287.5 ms] [gpu: 1263.9 ms] [data: 22.7 ms]
+[INFO    ][2025-11-19 20:35:01][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Exhausted data loaders. Refreshing...
+[INFO    ][2025-11-19 20:35:03][app.vjepa_droid.train_with_early_stopping][log_stats                ] [3,   240] loss: 0.442 [0.23, 0.21] [wd: 4.00e-02] [lr: 1.40e-04] [mem: 2.51e+04] [iter: 1290.5 ms] [gpu: 1264.9 ms] [data: 24.7 ms]
+[INFO    ][2025-11-19 20:35:16][app.vjepa_droid.train_with_early_stopping][log_stats                ] [3,   250] loss: 0.442 [0.23, 0.21] [wd: 4.00e-02] [lr: 1.41e-04] [mem: 2.51e+04] [iter: 1290.3 ms] [gpu: 1265.6 ms] [data: 23.7 ms]
+[INFO    ][2025-11-19 20:35:29][app.vjepa_droid.train_with_early_stopping][log_stats                ] [3,   260] loss: 0.441 [0.23, 0.21] [wd: 4.00e-02] [lr: 1.42e-04] [mem: 2.51e+04] [iter: 1289.7 ms] [gpu: 1265.9 ms] [data: 22.8 ms]
+[INFO    ][2025-11-19 20:35:41][app.vjepa_droid.train_with_early_stopping][log_stats                ] [3,   270] loss: 0.441 [0.23, 0.21] [wd: 4.00e-02] [lr: 1.43e-04] [mem: 2.51e+04] [iter: 1287.8 ms] [gpu: 1264.9 ms] [data: 22.0 ms]
+[INFO    ][2025-11-19 20:35:52][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Exhausted data loaders. Refreshing...
+[INFO    ][2025-11-19 20:35:55][app.vjepa_droid.train_with_early_stopping][log_stats                ] [3,   280] loss: 0.440 [0.23, 0.21] [wd: 4.00e-02] [lr: 1.44e-04] [mem: 2.51e+04] [iter: 1290.9 ms] [gpu: 1265.3 ms] [data: 24.8 ms]
+[INFO    ][2025-11-19 20:36:07][app.vjepa_droid.train_with_early_stopping][log_stats                ] [3,   290] loss: 0.440 [0.23, 0.21] [wd: 4.00e-02] [lr: 1.44e-04] [mem: 2.51e+04] [iter: 1290.0 ms] [gpu: 1265.2 ms] [data: 23.9 ms]
+[INFO    ][2025-11-19 20:36:19][app.vjepa_droid.train_with_early_stopping][log_stats                ] [3,   299] loss: 0.439 [0.23, 0.21] [wd: 4.00e-02] [lr: 1.45e-04] [mem: 2.51e+04] [iter: 1289.4 ms] [gpu: 1265.2 ms] [data: 23.2 ms]
+[INFO    ][2025-11-19 20:36:19][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] avg. loss 0.439
+[INFO    ][2025-11-19 20:36:23][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Running validation...
+[INFO    ][2025-11-19 20:36:39][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Validation: loss=0.7306 [jloss=0.3585, sloss=0.3722]
+[INFO    ][2025-11-19 20:36:39][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] No improvement for 2 epochs (best: 0.7188)
+[INFO    ][2025-11-19 20:36:39][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Epoch 4
+[INFO    ][2025-11-19 20:36:40][app.vjepa_droid.train_with_early_stopping][log_stats                ] [4,     0] loss: 0.393 [0.20, 0.19] [wd: 4.00e-02] [lr: 1.45e-04] [mem: 2.51e+04] [iter: 1252.4 ms] [gpu: 1251.4 ms] [data: 0.1 ms]
+[INFO    ][2025-11-19 20:36:53][app.vjepa_droid.train_with_early_stopping][log_stats                ] [4,    10] loss: 0.428 [0.22, 0.21] [wd: 4.00e-02] [lr: 1.46e-04] [mem: 2.51e+04] [iter: 1239.3 ms] [gpu: 1238.3 ms] [data: 0.1 ms]
+[INFO    ][2025-11-19 20:37:04][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Exhausted data loaders. Refreshing...
+[INFO    ][2025-11-19 20:37:06][app.vjepa_droid.train_with_early_stopping][log_stats                ] [4,    20] loss: 0.426 [0.22, 0.21] [wd: 4.00e-02] [lr: 1.47e-04] [mem: 2.51e+04] [iter: 1297.1 ms] [gpu: 1249.1 ms] [data: 47.1 ms]
+[INFO    ][2025-11-19 20:37:19][app.vjepa_droid.train_with_early_stopping][log_stats                ] [4,    30] loss: 0.429 [0.22, 0.21] [wd: 4.00e-02] [lr: 1.47e-04] [mem: 2.51e+04] [iter: 1285.2 ms] [gpu: 1252.1 ms] [data: 32.1 ms]
+[INFO    ][2025-11-19 20:37:32][app.vjepa_droid.train_with_early_stopping][log_stats                ] [4,    40] loss: 0.430 [0.22, 0.21] [wd: 4.00e-02] [lr: 1.48e-04] [mem: 2.51e+04] [iter: 1283.7 ms] [gpu: 1258.3 ms] [data: 24.4 ms]
+[INFO    ][2025-11-19 20:37:44][app.vjepa_droid.train_with_early_stopping][log_stats                ] [4,    50] loss: 0.430 [0.22, 0.21] [wd: 4.00e-02] [lr: 1.49e-04] [mem: 2.51e+04] [iter: 1277.1 ms] [gpu: 1256.5 ms] [data: 19.7 ms]
+[INFO    ][2025-11-19 20:37:55][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Exhausted data loaders. Refreshing...
+[INFO    ][2025-11-19 20:37:58][app.vjepa_droid.train_with_early_stopping][log_stats                ] [4,    60] loss: 0.427 [0.22, 0.21] [wd: 4.00e-02] [lr: 1.50e-04] [mem: 2.51e+04] [iter: 1294.3 ms] [gpu: 1260.0 ms] [data: 33.3 ms]
+[INFO    ][2025-11-19 20:38:10][app.vjepa_droid.train_with_early_stopping][log_stats                ] [4,    70] loss: 0.427 [0.22, 0.21] [wd: 4.00e-02] [lr: 1.51e-04] [mem: 2.51e+04] [iter: 1286.5 ms] [gpu: 1256.9 ms] [data: 28.7 ms]
+[INFO    ][2025-11-19 20:38:23][app.vjepa_droid.train_with_early_stopping][log_stats                ] [4,    80] loss: 0.427 [0.22, 0.21] [wd: 4.00e-02] [lr: 1.51e-04] [mem: 2.51e+04] [iter: 1282.4 ms] [gpu: 1256.3 ms] [data: 25.2 ms]
+[INFO    ][2025-11-19 20:38:35][app.vjepa_droid.train_with_early_stopping][log_stats                ] [4,    90] loss: 0.426 [0.22, 0.21] [wd: 4.00e-02] [lr: 1.52e-04] [mem: 2.51e+04] [iter: 1280.8 ms] [gpu: 1257.4 ms] [data: 22.5 ms]
+[INFO    ][2025-11-19 20:38:47][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Exhausted data loaders. Refreshing...
+[INFO    ][2025-11-19 20:38:49][app.vjepa_droid.train_with_early_stopping][log_stats                ] [4,   100] loss: 0.424 [0.22, 0.21] [wd: 4.00e-02] [lr: 1.53e-04] [mem: 2.51e+04] [iter: 1289.9 ms] [gpu: 1259.0 ms] [data: 29.9 ms]
+[INFO    ][2025-11-19 20:39:02][app.vjepa_droid.train_with_early_stopping][log_stats                ] [4,   110] loss: 0.424 [0.22, 0.21] [wd: 4.00e-02] [lr: 1.54e-04] [mem: 2.51e+04] [iter: 1285.5 ms] [gpu: 1257.3 ms] [data: 27.3 ms]
+[INFO    ][2025-11-19 20:39:14][app.vjepa_droid.train_with_early_stopping][log_stats                ] [4,   120] loss: 0.424 [0.22, 0.21] [wd: 4.00e-02] [lr: 1.54e-04] [mem: 2.51e+04] [iter: 1283.9 ms] [gpu: 1257.9 ms] [data: 25.1 ms]
+[INFO    ][2025-11-19 20:39:27][app.vjepa_droid.train_with_early_stopping][log_stats                ] [4,   130] loss: 0.423 [0.22, 0.21] [wd: 4.00e-02] [lr: 1.55e-04] [mem: 2.51e+04] [iter: 1283.0 ms] [gpu: 1258.9 ms] [data: 23.2 ms]
+[INFO    ][2025-11-19 20:39:38][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Exhausted data loaders. Refreshing...
+[INFO    ][2025-11-19 20:39:41][app.vjepa_droid.train_with_early_stopping][log_stats                ] [4,   140] loss: 0.422 [0.22, 0.21] [wd: 4.00e-02] [lr: 1.56e-04] [mem: 2.51e+04] [iter: 1289.2 ms] [gpu: 1259.4 ms] [data: 28.9 ms]
+[INFO    ][2025-11-19 20:39:53][app.vjepa_droid.train_with_early_stopping][log_stats                ] [4,   150] loss: 0.422 [0.22, 0.21] [wd: 4.00e-02] [lr: 1.57e-04] [mem: 2.51e+04] [iter: 1286.7 ms] [gpu: 1258.7 ms] [data: 27.1 ms]
+[INFO    ][2025-11-19 20:40:05][app.vjepa_droid.train_with_early_stopping][log_stats                ] [4,   160] loss: 0.422 [0.22, 0.21] [wd: 4.00e-02] [lr: 1.58e-04] [mem: 2.51e+04] [iter: 1281.7 ms] [gpu: 1255.4 ms] [data: 25.4 ms]
+[INFO    ][2025-11-19 20:40:18][app.vjepa_droid.train_with_early_stopping][log_stats                ] [4,   170] loss: 0.421 [0.22, 0.21] [wd: 4.00e-02] [lr: 1.58e-04] [mem: 2.51e+04] [iter: 1280.0 ms] [gpu: 1255.2 ms] [data: 23.9 ms]
+[INFO    ][2025-11-19 20:40:29][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Exhausted data loaders. Refreshing...
+[INFO    ][2025-11-19 20:40:31][app.vjepa_droid.train_with_early_stopping][log_stats                ] [4,   180] loss: 0.421 [0.22, 0.20] [wd: 4.00e-02] [lr: 1.59e-04] [mem: 2.51e+04] [iter: 1283.9 ms] [gpu: 1255.0 ms] [data: 28.0 ms]
+[INFO    ][2025-11-19 20:40:44][app.vjepa_droid.train_with_early_stopping][log_stats                ] [4,   190] loss: 0.421 [0.22, 0.20] [wd: 4.00e-02] [lr: 1.60e-04] [mem: 2.51e+04] [iter: 1282.2 ms] [gpu: 1254.7 ms] [data: 26.6 ms]
+[INFO    ][2025-11-19 20:40:56][app.vjepa_droid.train_with_early_stopping][log_stats                ] [4,   200] loss: 0.421 [0.22, 0.21] [wd: 4.00e-02] [lr: 1.61e-04] [mem: 2.51e+04] [iter: 1279.6 ms] [gpu: 1253.4 ms] [data: 25.3 ms]
+[INFO    ][2025-11-19 20:41:08][app.vjepa_droid.train_with_early_stopping][log_stats                ] [4,   210] loss: 0.421 [0.22, 0.20] [wd: 4.00e-02] [lr: 1.61e-04] [mem: 2.51e+04] [iter: 1277.4 ms] [gpu: 1252.5 ms] [data: 24.1 ms]
+[INFO    ][2025-11-19 20:41:20][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Exhausted data loaders. Refreshing...
+[INFO    ][2025-11-19 20:41:22][app.vjepa_droid.train_with_early_stopping][log_stats                ] [4,   220] loss: 0.420 [0.22, 0.20] [wd: 4.00e-02] [lr: 1.62e-04] [mem: 2.51e+04] [iter: 1279.8 ms] [gpu: 1252.4 ms] [data: 26.5 ms]
+[INFO    ][2025-11-19 20:41:34][app.vjepa_droid.train_with_early_stopping][log_stats                ] [4,   230] loss: 0.420 [0.22, 0.20] [wd: 4.00e-02] [lr: 1.63e-04] [mem: 2.51e+04] [iter: 1279.1 ms] [gpu: 1252.7 ms] [data: 25.4 ms]
+[INFO    ][2025-11-19 20:41:47][app.vjepa_droid.train_with_early_stopping][log_stats                ] [4,   240] loss: 0.420 [0.22, 0.20] [wd: 4.00e-02] [lr: 1.64e-04] [mem: 2.51e+04] [iter: 1277.5 ms] [gpu: 1252.2 ms] [data: 24.4 ms]
+[INFO    ][2025-11-19 20:41:59][app.vjepa_droid.train_with_early_stopping][log_stats                ] [4,   250] loss: 0.419 [0.22, 0.20] [wd: 4.00e-02] [lr: 1.65e-04] [mem: 2.51e+04] [iter: 1274.8 ms] [gpu: 1250.5 ms] [data: 23.4 ms]
+[INFO    ][2025-11-19 20:42:10][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Exhausted data loaders. Refreshing...
+[INFO    ][2025-11-19 20:42:12][app.vjepa_droid.train_with_early_stopping][log_stats                ] [4,   260] loss: 0.419 [0.21, 0.20] [wd: 4.00e-02] [lr: 1.65e-04] [mem: 2.51e+04] [iter: 1277.2 ms] [gpu: 1250.2 ms] [data: 26.2 ms]
+[INFO    ][2025-11-19 20:42:24][app.vjepa_droid.train_with_early_stopping][log_stats                ] [4,   270] loss: 0.419 [0.21, 0.20] [wd: 4.00e-02] [lr: 1.66e-04] [mem: 2.51e+04] [iter: 1273.8 ms] [gpu: 1247.7 ms] [data: 25.2 ms]
+[INFO    ][2025-11-19 20:42:36][app.vjepa_droid.train_with_early_stopping][log_stats                ] [4,   280] loss: 0.418 [0.21, 0.20] [wd: 4.00e-02] [lr: 1.67e-04] [mem: 2.51e+04] [iter: 1269.1 ms] [gpu: 1243.8 ms] [data: 24.3 ms]
+[INFO    ][2025-11-19 20:42:47][app.vjepa_droid.train_with_early_stopping][log_stats                ] [4,   290] loss: 0.418 [0.21, 0.20] [wd: 4.00e-02] [lr: 1.68e-04] [mem: 2.51e+04] [iter: 1264.1 ms] [gpu: 1239.7 ms] [data: 23.5 ms]
+[INFO    ][2025-11-19 20:42:57][app.vjepa_droid.train_with_early_stopping][log_stats                ] [4,   299] loss: 0.417 [0.21, 0.20] [wd: 4.00e-02] [lr: 1.68e-04] [mem: 2.51e+04] [iter: 1261.4 ms] [gpu: 1237.7 ms] [data: 22.8 ms]
+[INFO    ][2025-11-19 20:42:57][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] avg. loss 0.417
+[INFO    ][2025-11-19 20:43:01][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Running validation...
+[INFO    ][2025-11-19 20:43:16][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Validation: loss=0.7248 [jloss=0.3567, sloss=0.3681]
+[INFO    ][2025-11-19 20:43:16][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] No improvement for 3 epochs (best: 0.7188)
+[INFO    ][2025-11-19 20:43:16][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Early stopping triggered! No improvement for 3 epochs.
+[INFO    ][2025-11-19 20:43:16][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Best validation loss: 0.7188 at epoch 1
+[INFO    ][2025-11-19 20:43:16][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Best model saved to: /data/s185927/vjepa2/weights/droid/4.8.vitg16-256px-8f_050pct/best.pt
+[INFO    ][2025-11-19 20:43:16][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Training complete!
+[INFO    ][2025-11-19 20:43:16][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Stopped early at epoch 4
+[INFO    ][2025-11-19 20:43:16][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Best validation loss: 0.7188
+[INFO    ][2025-11-19 20:43:16][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Best model: /data/s185927/vjepa2/weights/droid/4.8.vitg16-256px-8f_050pct/best.pt
+[INFO    ][2025-11-19 20:43:16][app.vjepa_droid.train_with_early_stopping][main_with_early_stopping ] Latest model: /data/s185927/vjepa2/weights/droid/4.8.vitg16-256px-8f_050pct/latest.pt

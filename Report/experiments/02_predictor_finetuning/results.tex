@@ -1,0 +1,65 @@
+\subsection{Results}
+
+Figure~\ref{fig:x_axis_fine_tune_learning_curves} shows the training and validation losses for all training-set fractions.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{Pictures/Experiments/02_sim_training_different_fractions_x_axis_finetune/learning_curves.png}
+    \caption{Learning curves for predictor fine-tuning on simulated $x$-axis trajectories. Left: training loss. Right: validation loss used for early stopping.}
+    \label{fig:x_axis_fine_tune_learning_curves}
+\end{figure}
+
+All training fractions show rapid initial convergence within the first 10 epochs. The training loss (left panel) shows that smaller data fractions reach lower final training losses: the 25\% configuration converges to approximately 0.44, while the 100\% configuration converges to approximately 0.47. Early stopping terminates training at epoch 25 for 25\% data, epoch 42 for 50\%, and epoch 50 for both 75\% and 100\%. The validation loss (right panel) shows the opposite pattern: the 100\% configuration achieves the lowest final validation loss (0.474 at epoch 40), followed by 75\% (0.477 at epoch 41), 50\% (0.483 at epoch 32), and 25\% (0.494 at epoch 15).
+
+Figure~\ref{fig:x_axis_fine_tune_distance_distributions} shows the distribution of final distances to the goal across approximately 50 test trajectories for each model.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{Pictures/Experiments/02_sim_training_different_fractions_x_axis_finetune/distance_distributions.png}
+    \caption{Distribution of final distances to goal after 5 planning steps. Box plots show median (horizontal line) and mean (diamond marker). The 0.05m success threshold is shown as a dashed red line.}
+    \label{fig:x_axis_fine_tune_distance_distributions}
+\end{figure}
+
+The 25\% fine-tuned model achieves the lowest mean final distance (0.154m) and median (0.147m), outperforming the Meta baseline (mean 0.165m, median 0.156m). The 75\% and 100\% models exhibit substantially higher mean distances (0.260m and 0.267m respectively) and larger variance. None of the models reach the 0.05m success threshold.
+
+Figure~\ref{fig:x_axis_fine_tune_planning_trajectories} shows how the distance to goal evolves over the 5 planning steps.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{Pictures/Experiments/02_sim_training_different_fractions_x_axis_finetune/planning_trajectories.png}
+    \caption{Mean distance to goal over planning steps. Shaded regions indicate $\pm$1 standard deviation.}
+    \label{fig:x_axis_fine_tune_planning_trajectories}
+\end{figure}
+
+The 25\% fine-tuned model and Meta baseline consistently reduce distance 
+to the goal over all planning steps, starting from approximately 0.21m 
+and reaching 0.15m and 0.16m respectively. The 50\% model shows mixed 
+behavior, initially increasing distance before recovering to reach 0.19m. 
+In contrast, the 75\% and 100\% models monotonically increase distance 
+over planning steps: the 75\% model increases from 0.21m to 0.26m, and 
+the 100\% model increases from 0.21m to 0.27m. The standard deviation 
+grows substantially over planning steps for the 50\%, 75\%, and 100\% 
+models, indicating increasingly variable behavior.
+
+%APPENDIX TABLE
+
+\chapter{Predictor fine-tuning evaluation}
+
+Table~\ref{tab:x_axis_fine_tune_eval_stats} summarizes the evaluation statistics. The 25\% fine-tuned model achieves the lowest mean final distance (0.154m) and median (0.147m), outperforming the Meta baseline. The 75\% and 100\% models exhibit higher mean distances and larger variance, with maximum distances reaching 0.689m and 0.721m respectively. None of the models reach the 0.05m success threshold.
+
+\begin{table}[H]
+    \centering
+    \caption{Planning evaluation statistics for fine-tuned models and Meta baseline (n=50 test trajectories).}
+    \label{tab:x_axis_fine_tune_eval_stats}
+    \begin{tabular}{lccccc}
+        \toprule
+        Model & Mean (m) & Std (m) & Median (m) & Min (m) & Max (m) \\
+        \midrule
+        25\% & 0.154 & 0.042 & 0.147 & 0.085 & 0.261 \\
+        50\% & 0.190 & 0.088 & 0.162 & 0.103 & 0.500 \\
+        75\% & 0.260 & 0.158 & 0.219 & 0.085 & 0.689 \\
+        100\% & 0.267 & 0.170 & 0.200 & 0.110 & 0.721 \\
+        Meta baseline & 0.165 & 0.043 & 0.156 & 0.108 & 0.275 \\
+        \bottomrule
+    \end{tabular}
+\end{table}

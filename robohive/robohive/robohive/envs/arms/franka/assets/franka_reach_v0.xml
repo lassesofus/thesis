@@ -1,0 +1,58 @@
+<mujoco model="Franka Reach">
+<!-- =================================================
+    Copyright 2020 Vikash Kumar
+    Model   :: Franka Reach (MuJoCoV2.0)
+    Author  :: Vikash Kumar (vikashplus@gmail.com)
+    source  :: https://github.com/vikashplus/robohive
+    License :: Under Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0 Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
+====================================================== -->
+    <compiler angle="radian" meshdir="../../../../simhive/franka_sim" texturedir="../../../../simhive/franka_sim"/>
+
+    <size njmax='1000' nconmax='1000'/>
+
+    <include file="../../../../simhive/scene_sim/room_scene.xml"/>
+    <include file="../../../../simhive/franka_sim/assets/assets.xml"/>
+    <include file="../../../../simhive/furniture_sim/simpleTable/simpleTable_asset.xml"/>
+    <include file="../../../../simhive/franka_sim/assets/actuator0.xml"/>
+    <include file="../../../../simhive/franka_sim/assets/gripper_assets.xml"/>
+    <include file="../../../../simhive/franka_sim/assets/gripper_actuator0.xml"/>
+
+    <worldbody>
+
+        <!-- Original cameras -->
+        <camera name='left_cam' pos='-0.691 0.147 1.121' xyaxes='0.231 -0.973 -0.000 0.050 0.012 0.999'/>
+
+        <!-- New parameterized cameras for camera sensitivity experiments -->
+        <!-- All cameras look at workspace center (0, 0.475, 1.0) -->
+        <!-- Naming: {position}_{elevation} where position is azimuth direction -->
+        <camera name='front_cam' pos='0.869 0.475 1.233' xyaxes='0.000 1.000 -0.000 -0.259 0.000 0.966'/>
+        <camera name='right_cam' pos='-0.000 -0.394 1.233' xyaxes='1.000 -0.000 0.000 0.000 0.259 0.966'/>
+        <camera name='back_cam' pos='-0.869 0.475 1.233' xyaxes='-0.000 -1.000 0.000 0.259 -0.000 0.966'/>
+        <camera name='top_cam' pos='0.000 0.614 1.788' xyaxes='-1.000 0.000 0.000 -0.000 -0.985 0.174'/>
+        <camera name='front_right_cam' pos='0.577 -0.102 1.380' xyaxes='0.707 0.707 -0.000 -0.299 0.299 0.906'/>
+        <camera name='back_left_cam' pos='-0.577 1.052 1.380' xyaxes='-0.707 -0.707 0.000 0.299 -0.299 0.906'/>
+        <camera name='left_high_cam' pos='-0.218 1.073 1.636' xyaxes='-0.940 -0.342 0.000 0.242 -0.664 0.707'/>
+        <camera name='left_low_cam' pos='-0.308 1.321 1.000' xyaxes='-0.940 -0.342 0.000 0.000 0.000 1.000'/>
+
+        <site name='workspace' type='box' size='.6 .375 .25' pos='0 0.475 1.0' group='3' rgba='0 0 .4 .2'/>
+
+        <!-- Robot -->
+        <body pos='0 0 .775' euler='0 0 1.57'>
+            <geom type='cylinder' size='.120 .4' pos='-.04 0 -.4'/>
+            <include file="../../../../simhive/franka_sim/assets/chain0.xml"/>
+        </body>
+
+        <!-- simple Table -->
+        <body pos='0 0.475 0'>
+            <include file="../../../../simhive/furniture_sim/simpleTable/simpleMarbleTable_body.xml"/>
+        </body>
+
+        <!-- tasks details added here via include-->
+        <site name='target' type='sphere' size='.1' pos='0 0.475 1.0' group='1' rgba='0 0 0 0'/>  <!-- Change rgba to show target sphere -->
+
+        <!-- Coordinate axes visualization (X=Red, Y=Green, Z=Blue) -->
+        <!-- Place at front-left corner of workspace for visibility -->
+        
+    </worldbody>
+
+</mujoco>

@@ -1,0 +1,178 @@
+\section{Language-Conditioned Latent Goal Learning}\label{sec:language_grounding}
+
+This experiment develops a data generation pipeline for training language-conditioned latent goal predictors. The objective is to enable a lightweight model to map a current visual latent $z_k$ and a natural language instruction $t$ to a latent change code $\hat{c}$ that represents the desired goal state transformation:
+\begin{equation}
+    f_\phi: (z_k, t) \mapsto \hat{c}, \quad \text{where} \quad c = z_{k+d} - z_k.
+\end{equation}
+This formulation enables language-conditioned planning with V-JEPA-2 without retraining the world model itself. The latent change code $c$ can be compressed via PCA to reduce dimensionality while preserving the directional information necessary for goal-directed behavior.
+
+\subsection{Methods}
+
+\subsubsection{Overview}
+The pipeline generates $(x_k, x_{k+d}, t)$ triplets from the DROID dataset~\cite{khazatsky2024droid}, where $x_k$ and $x_{k+d}$ are video frames separated by $d$ timesteps, and $t$ is a natural language instruction describing the robot action between them. The key challenge is twofold: (1) selecting frame pairs that exhibit visually distinguishable changes, and (2) generating accurate, diverse language descriptions of those changes using vision-language models (VLMs).
+
+\subsubsection{DROID dataset structure}
+Each DROID trajectory directory contains:
+\begin{itemize}
+    \item \texttt{trajectory.h5}: HDF5 file with robot state observations including Cartesian end-effector position $(x, y, z, r_x, r_y, r_z)$ and gripper aperture $g \in [0, 1]$
+    \item \texttt{recordings/MP4/}: Video files from multiple camera viewpoints (left, right, wrist)
+    \item \texttt{metadata\_*.json}: Trajectory metadata including camera serial numbers and file paths
+\end{itemize}
+The pipeline uses the left external camera (\texttt{left\_mp4\_path} in metadata) as it provides a consistent third-person view of the manipulation workspace.
+
+\subsubsection{Frame pair sampling}\label{sec:frame_pair_sampling}
+Frame pairs are sampled at multiple time horizons $d \in \{30, 50, 100, 200\}$ frames to capture actions of varying temporal extent---from fine-grained single motions to compound multi-step manipulations. For each horizon $d$, candidate pairs $(k, k+d)$ are generated with a stride of 20 frames to avoid excessive overlap.
+
+A frame pair must satisfy three filtering criteria to be included in the dataset:
+
+\paragraph{Arm visibility filter.}
+The robot arm must be visible in the camera frame for both $x_k$ and $x_{k+d}$. This is approximated using the Cartesian end-effector position $(x, y, z)$ from the trajectory data:
+\begin{equation}
+    \texttt{is\_visible}(p) = (p_x \geq 0.50) \land (p_z \leq 0.42),
+\end{equation}
+where $p_x \geq 0.50$\,m ensures the arm has moved forward into the workspace, and $p_z \leq 0.42$\,m ensures it has lowered sufficiently to be within the camera's field of view. These thresholds were determined empirically for the left external camera configuration.
+
+\paragraph{Meaningful change filter.}
+The change between frames must be visually distinguishable. Three motion metrics are computed from the trajectory data:
+\begin{align}
+    \Delta_{\text{pos}} &= \lVert p_{k+d} - p_k \rVert_2, \\
+    \Delta_z &= p_{k+d}^z - p_k^z, \\
+    \Delta_{\text{grip}} &= |g_{k+d} - g_k|.
+\end{align}
+A pair is considered meaningful if any of the following conditions hold:
+\begin{itemize}
+    \item Large position change: $\Delta_{\text{pos}} \geq 0.10$\,m (10\,cm movement)
+    \item Gripper change with movement: $\Delta_{\text{grip}} \geq 0.30$ and $\Delta_{\text{pos}} \geq 0.05$\,m
+    \item Clear height change: $|\Delta_z| \geq 0.05$\,m (5\,cm vertical displacement)
+\end{itemize}
+These thresholds are intentionally conservative to ensure that the VLM can reliably perceive the difference between frames.
+
+\paragraph{Balance constraint.}
+To prevent over-representation of any single trajectory region, a maximum of 50 pairs per horizon per trajectory is enforced. When exceeded, pairs are uniformly subsampled.
+
+\subsubsection{VLM-based instruction generation}
+Given a filtered frame pair $(x_k, x_{k+d})$, a vision-language model generates natural language instructions describing the robot action. Two prompting strategies are implemented.
+
+\paragraph{Single-instruction generation (v2).}
+Both frames are presented to the VLM in a single API call with the following prompt:
+
+\begin{quote}
+\small
+\texttt{You are shown two frames from a robot manipulation video.}\\[0.5em]
+\texttt{FRAME 1 (BEFORE): The first image}\\
+\texttt{FRAME 2 (AFTER): The second image}\\[0.5em]
+\texttt{Please provide:}\\[0.3em]
+\texttt{1. WHAT CHANGED: Describe specifically what is different between Frame 1 and Frame 2. Focus on:}\\
+\texttt{\ \ \ - Robot arm/gripper position changes}\\
+\texttt{\ \ \ - Gripper state (open/closed/holding)}\\
+\texttt{\ \ \ - Object positions or states}\\[0.3em]
+\texttt{2. INSTRUCTION: Write ONE natural language instruction that could have guided this robot action.}\\
+\texttt{\ \ \ - Use action verbs: move, reach, lower, lift, grasp, release, pour, push, rotate}\\
+\texttt{\ \ \ - Be specific about the target (e.g., "toward the cup", "above the bowl")}\\
+\texttt{\ \ \ - Keep it concise (one sentence)}
+\end{quote}
+
+Presenting both frames simultaneously avoids inconsistencies that arise when frames are described independently (e.g., the same object being labeled with different colors in separate descriptions).
+
+\paragraph{Diverse instruction generation (v3).}
+To address the inherent ambiguity of natural language---where the same action can be described in multiple valid ways---a second prompting strategy generates five diverse instructions per frame pair:
+
+\begin{quote}
+\small
+\texttt{INSTRUCTIONS: Write 5 DIFFERENT natural language instructions that could ALL describe this same robot action. Vary them by:}\\
+\texttt{\ \ \ - Level of detail (brief vs specific)}\\
+\texttt{\ \ \ - Reference frame (relative to objects vs spatial directions)}\\
+\texttt{\ \ \ - Action verb choice (move/reach/lower/lift/grasp/approach)}\\
+\texttt{\ \ \ - What aspect is emphasized (motion, target, or both)}
+\end{quote}
+
+This yields training data suitable for contrastive learning objectives, where multiple instructions describing the same visual transition serve as positive pairs.
+
+\subsubsection{Output format}
+Each processed frame pair produces a JSON record containing:
+\begin{itemize}
+    \item Trajectory identifier and frame indices $(k, k+d, d)$
+    \item Paths to extracted frame images
+    \item Motion metrics: $\Delta_{\text{pos}}$, $\Delta_z$, $\Delta_{\text{grip}}$
+    \item VLM-generated change description and instruction(s)
+\end{itemize}
+
+\subsection{Example outputs}
+Table~\ref{tab:instruction_examples} shows representative frame pairs and their generated instructions from a single DROID trajectory involving a cup manipulation task.
+
+\begin{table}[ht]
+\centering
+\caption{Example frame pairs and VLM-generated instructions from a cup manipulation trajectory. Motion metrics are computed from robot state data.}
+\label{tab:instruction_examples}
+\small
+\begin{tabular}{ccccp{5.5cm}}
+\toprule
+$k$ & $k+d$ & $d$ & $\Delta_{\text{pos}}$ (m) & Instruction \\
+\midrule
+75 & 105 & 30 & 0.162 & Lower the arm and grasp the item on the table. \\
+90 & 120 & 30 & 0.124 & Lower the gripper above the yellow cup and prepare to grasp. \\
+180 & 210 & 30 & 0.079 & Lower the gripper and grasp the yellow cup. \\
+195 & 225 & 30 & 0.186 & Lift the yellow cup upward. \\
+210 & 240 & 30 & 0.160 & Tilt the cup toward the bowl to pour its contents. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Proposed figures}
+
+The following figures would effectively visualize the pipeline:
+
+\begin{enumerate}
+    \item \textbf{Pipeline overview diagram} (Figure~\ref{fig:pipeline_overview}): A flowchart showing the complete data generation process: DROID trajectory $\rightarrow$ frame pair sampling with filters $\rightarrow$ VLM instruction generation $\rightarrow$ $(x_k, x_{k+d}, t)$ triplets.
+
+    \item \textbf{Filtering criteria visualization} (Figure~\ref{fig:filtering}):
+    \begin{itemize}
+        \item Top row: Example of a rejected pair (arm not visible / insufficient motion)
+        \item Bottom row: Example of an accepted pair showing clear visual difference
+        \item Overlaid motion metrics and filter decisions
+    \end{itemize}
+
+    \item \textbf{Frame pair examples with instructions} (Figure~\ref{fig:frame_pairs}): A $2 \times 3$ or $2 \times 4$ grid showing:
+    \begin{itemize}
+        \item Row 1: ``Before'' frames ($x_k$)
+        \item Row 2: Corresponding ``after'' frames ($x_{k+d}$)
+        \item Below each column: Generated instruction text
+        \item Varying time horizons $d$ across columns to show action granularity
+    \end{itemize}
+
+    \item \textbf{Diverse instruction examples} (Figure~\ref{fig:diverse_instructions}): A single frame pair with all five diverse instructions listed, highlighting the variation in specificity, verb choice, and reference frame.
+
+    \item \textbf{Time horizon distribution} (Figure~\ref{fig:horizon_dist}): Histogram or bar chart showing the number of valid pairs per time horizon $d$, demonstrating coverage across action scales.
+
+    \item \textbf{Motion metric distributions} (Figure~\ref{fig:motion_metrics}): Scatter plot of $\Delta_{\text{pos}}$ vs $|\Delta_z|$ for all sampled pairs, colored by acceptance/rejection status, showing the effect of filtering thresholds.
+\end{enumerate}
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=\textwidth]{experiments/03_language_grounding/figures/frame_pair_grid.pdf}
+    \caption{Frame pair examples from a cup manipulation trajectory. Top row shows ``before'' frames ($x_k$), bottom row shows ``after'' frames ($x_{k+d}$) with $d=30$ frames. Each column represents a distinct phase of the manipulation: approaching and lowering toward the cup, grasping the cup, lifting the cup, and pouring. Instructions below each pair were generated by prompting a VLM with both frames simultaneously.}
+    \label{fig:frame_pairs}
+\end{figure}
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.9\textwidth]{experiments/03_language_grounding/figures/diverse_instructions.pdf}
+    \caption{Example of diverse instruction generation for a single frame pair. The same ``lift cup'' action is described using five different phrasings that vary in specificity, verb choice, and reference frame. This diversity enables contrastive training objectives that make the language-conditioned predictor robust to paraphrasing.}
+    \label{fig:diverse_instructions}
+\end{figure}
+
+\subsection{Training considerations}
+The generated dataset supports several training objectives for the language-conditioned goal predictor $f_\phi$:
+
+\paragraph{Supervised regression.}
+Given encoded latents $z_k = E_\theta(x_k)$ and $z_{k+d} = E_\theta(x_{k+d})$ from the frozen V-JEPA-2 encoder, train $f_\phi$ to predict the latent change $c = z_{k+d} - z_k$ from $(z_k, t)$ using MSE loss.
+
+\paragraph{Contrastive learning.}
+Using the diverse instruction data (v3), train with an InfoNCE-style objective where multiple instructions for the same transition form positive pairs:
+\begin{equation}
+    \mathcal{L}_{\text{NCE}} = -\log \frac{\exp(\text{sim}(\hat{c}_i, c) / \tau)}{\sum_j \exp(\text{sim}(\hat{c}_j, c_j) / \tau)},
+\end{equation}
+where $\hat{c}_i = f_\phi(z_k, t_i)$ for instruction $t_i$, and negatives come from different transitions in the batch.
+
+\paragraph{Language encoder.}
+Instructions are encoded using a pretrained sentence transformer (e.g., \texttt{all-MiniLM-L6-v2}), which provides semantic similarity between paraphrases without requiring the model to learn language understanding from scratch.

@@ -1,0 +1,91 @@
+\chapter{DROID Frame Pair Sampling Statistics}
+\label{app:droid_sampling}
+
+This appendix provides additional statistics for the frame pair sampling procedure described in Section~\ref{sec:droid_augmentation}.
+
+\subsection{Dataset Summary}
+
+The sampling procedure processed 18,828 trajectories from the DROID corpus, of which 13,202 (70.1\%) yielded at least one valid frame pair after filtering. The final dataset contains 80,614 frame pairs, each annotated with five natural language instructions, resulting in 403,070 instruction--frame-pair triplets. On average, each successful trajectory contributes 6.1 frame pairs (median: 6.0), with a maximum of 12 pairs per trajectory enforced by the scene diversity constraint.
+
+\subsection{Motion Type Distribution}
+
+Each frame pair is classified by its dominant motion components based on the measured changes between frames. The classification uses the following thresholds (corresponding to Tier~A salience criteria):
+\begin{itemize}
+    \item \textbf{move}: Horizontal displacement $\Delta_{\text{pos}} \geq 0.10$\,m
+    \item \textbf{gripper}: Gripper aperture change $\Delta_{\text{grip}} \geq 0.30$
+    \item \textbf{lift}: Upward vertical movement $\Delta_z \geq 0.05$\,m
+    \item \textbf{lower}: Downward vertical movement $\Delta_z \leq -0.05$\,m
+    \item \textbf{static}: No individual component exceeds the above thresholds (Tier~B samples only)
+\end{itemize}
+
+Motion types are combined when multiple components are present (e.g., \texttt{move+gripper+lift} indicates simultaneous horizontal movement, gripper actuation, and upward motion). Table~\ref{tab:change_type_distribution} shows the distribution across all sampled frame pairs.
+
+\begin{table}[t]
+\centering
+\caption{Distribution of motion types in the sampled DROID frame pairs. Motion types are composed of primitive components: horizontal movement (move), gripper actuation (gripper), upward motion (lift), and downward motion (lower). The \texttt{static} category contains Tier~B samples with detectable but small motions that do not exceed individual component thresholds.}
+\label{tab:change_type_distribution}
+\begin{tabular}{lrr}
+\toprule
+Motion type & Count & Percentage \\
+\midrule
+move+lower & 12,404 & 15.4\% \\
+gripper & 11,053 & 13.7\% \\
+static & 10,261 & 12.7\% \\
+move+gripper+lower & 10,108 & 12.5\% \\
+move+gripper+lift & 9,483 & 11.8\% \\
+move+gripper & 6,432 & 8.0\% \\
+move+lift & 6,327 & 7.8\% \\
+move & 6,133 & 7.6\% \\
+lower & 2,881 & 3.6\% \\
+gripper+lower & 2,768 & 3.4\% \\
+gripper+lift & 1,964 & 2.4\% \\
+lift & 800 & 1.0\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The distribution shows broad coverage across motion primitives. The most common types involve combinations of horizontal movement with vertical displacement (\texttt{move+lower}, \texttt{move+lift}), consistent with typical reach-and-manipulate trajectories. Gripper-only actions (13.7\%) capture grasping and releasing events without significant arm movement. The \texttt{static} category (12.7\%) represents Tier~B samples included to increase dataset diversity; these exhibit smaller but still detectable state changes.
+
+\subsection{Temporal Horizon Distribution}
+
+Frame pairs are sampled at four temporal offsets to capture motions of varying duration. Table~\ref{tab:horizon_distribution} shows the distribution across horizons.
+
+\begin{table}[h]
+\centering
+\caption{Distribution of frame pairs by temporal horizon $d$ (in frames at 15\,Hz).}
+\label{tab:horizon_distribution}
+\begin{tabular}{lrrr}
+\toprule
+Horizon $d$ & Duration & Count & Percentage \\
+\midrule
+30 & 2.0\,s & 33,829 & 42.0\% \\
+50 & 3.3\,s & 26,799 & 33.2\% \\
+100 & 6.7\,s & 14,768 & 18.3\% \\
+200 & 13.3\,s & 5,218 & 6.5\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Shorter horizons yield more valid pairs because longer separations are more likely to span trajectory boundaries or violate filtering constraints (e.g., arm visibility, occlusion). The bias toward shorter horizons also reflects the structure of DROID trajectories, which often contain multiple short manipulation episodes.
+
+\subsection{Collection Site Distribution}
+
+The sampled frame pairs span all six DROID collection sites, ensuring diversity in robot configurations, camera setups, and manipulation scenarios. Table~\ref{tab:lab_distribution} shows the distribution.
+
+\begin{table}[h]
+\centering
+\caption{Distribution of frame pairs by DROID collection site.}
+\label{tab:lab_distribution}
+\begin{tabular}{lr}
+\toprule
+Collection site & Frame pairs \\
+\midrule
+CLVR & 20,215 \\
+IPRL & 20,189 \\
+IRIS & 14,636 \\
+AUTOLab & 12,392 \\
+ILIAD & 11,750 \\
+GuptaLab & 1,432 \\
+\bottomrule
+\end{tabular}
+\end{table}

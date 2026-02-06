@@ -1,3 +1,44 @@
 # Ignore local conda environment
 miniconda/
 Miniconda3-latest-Linux-x86_64.sh
+
+# API keys and secrets
+.env
+.env.*
+*.env
+
+# Data files (large)
+*.json
+*.jsonl
+*.h5
+*.hdf5
+*.npz
+*.npy
+*.pkl
+*.pickle
+*.pt
+*.pth
+*.ckpt
+
+# Images and videos (generated)
+*.mp4
+*.avi
+*.mov
+*.png
+*.jpg
+*.jpeg
+*.pdf
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# Batch processing outputs
+experiments/04_language_grounding/batch_run/
+experiments/04_language_grounding/sampled_pairs*/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
